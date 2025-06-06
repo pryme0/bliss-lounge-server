@@ -20,7 +20,7 @@ import {
   UpdateInventoryDto,
 } from 'src/dto';
 import { Inventory } from './entities/inventory.entity';
-import { JwtAuthGuard } from 'src/utils/guard';
+import { CustomJwtAuthGuard } from 'src/utils/guard';
 
 @ApiTags('Inventory')
 @Controller('inventory')
@@ -28,7 +28,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtAuthGuard)
   @ApiOperation({ summary: 'Create a new inventory item' })
   @ApiResponse({
     status: 201,
@@ -63,7 +63,7 @@ export class InventoryController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtAuthGuard)
   @ApiOperation({ summary: 'Update an inventory item' })
   @ApiParam({ name: 'id', type: 'number', description: 'Inventory item ID' })
   @ApiResponse({
@@ -79,7 +79,7 @@ export class InventoryController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtAuthGuard)
   @ApiOperation({ summary: 'Soft delete an inventory item' })
   @ApiParam({ name: 'id', type: 'number', description: 'Inventory item ID' })
   @ApiResponse({ status: 200, description: 'Item soft deleted successfully' })

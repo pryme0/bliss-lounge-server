@@ -65,7 +65,9 @@ export class AdminService {
       fullName: admin.fullName,
       phoneNumber: admin.phoneNumber,
     };
-    const access_token = this.jwtService.sign(payload);
+    const access_token = this.jwtService.sign(payload, {
+      expiresIn: '2d',
+    });
 
     const refresh_token = this.jwtService.sign(payload, {
       expiresIn: '7d',

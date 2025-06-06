@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 
 export enum InventoryUnitEnum {
-  KG = 'In-Stock',
+  KG = 'kg',
   LITERS = 'liters',
   PIECES = 'pieces',
 }

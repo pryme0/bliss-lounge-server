@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -12,7 +12,7 @@ import { databaseConfig } from './config/database.config';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AdminModule } from './admin/admin.module';
-import { JwtAuthGuard, JwtStrategy } from './utils/guard';
+import { LogAuthHeadersMiddleware } from './utils/guard';
 @Module({
   imports: [
     JwtModule.register({

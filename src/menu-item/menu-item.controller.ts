@@ -8,6 +8,7 @@ import {
   Body,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import { MenuItemService } from './menu-item.service';
 import {
@@ -21,6 +22,7 @@ import {
 import { CreateMenuItemDto, UpdateMenuItemDto } from 'src/dto';
 import { MenuItem } from './entities/menu-item.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/utils/guard';
 
 @ApiTags('Menu Items')
 @Controller('menu-items')
@@ -28,6 +30,7 @@ export class MenuItemController {
   constructor(private readonly menuItemService: MenuItemService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateMenuItemDto })
@@ -54,6 +57,7 @@ export class MenuItemController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Update a menu item' })
   @ApiParam({ name: 'id', description: 'Menu item ID' })
   @ApiResponse({ status: 200, type: MenuItem })
@@ -65,6 +69,7 @@ export class MenuItemController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete a menu item' })
   @ApiParam({ name: 'id', description: 'Menu item ID' })
   @ApiResponse({ status: 200 })

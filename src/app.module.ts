@@ -11,6 +11,8 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { databaseConfig } from './config/database.config';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { AdminModule } from './admin/admin.module';
+import { JwtAuthGuard, JwtStrategy } from './utils/guard';
 @Module({
   imports: [
     JwtModule.register({
@@ -26,8 +28,10 @@ import { JwtModule } from '@nestjs/jwt';
     CustomersModule,
     MenuItemModule,
     TransactionsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
+  exports: [],
 })
 export class AppModule {}

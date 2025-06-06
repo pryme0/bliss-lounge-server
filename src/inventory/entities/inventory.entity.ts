@@ -7,6 +7,17 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 
+export enum InventoryUnitEnum {
+  KG = 'In-Stock',
+  LITERS = 'liters',
+  PIECES = 'pieces',
+}
+
+export enum InventoryStatusEnum {
+  INSTOCK = 'in-stock',
+  OUTOFSTOCK = 'out-of-stock',
+}
+
 @Entity()
 export class Inventory {
   @PrimaryGeneratedColumn('uuid')
@@ -23,6 +34,20 @@ export class Inventory {
 
   @Column({ nullable: true })
   description?: string;
+
+  @Column({
+    type: 'enum',
+    enum: InventoryStatusEnum,
+    default: InventoryStatusEnum.INSTOCK,
+  })
+  status?: string;
+
+  @Column({
+    type: 'enum',
+    enum: InventoryUnitEnum,
+    default: InventoryUnitEnum.KG,
+  })
+  unit?: string;
 
   @CreateDateColumn()
   createdAt: Date;

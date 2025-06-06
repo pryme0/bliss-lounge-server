@@ -1,11 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   Min,
 } from 'class-validator';
+import { InventoryUnitEnum } from 'src/inventory/entities/inventory.entity';
 
 export class CreateInventoryDto {
   @ApiProperty({
@@ -21,6 +23,21 @@ export class CreateInventoryDto {
   @IsNumber()
   @Min(0)
   quantity: number;
+
+  @ApiProperty({ example: 100, description: 'Quantity of the item' })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  unitPrice: number;
+
+  @ApiProperty({
+    enum: InventoryUnitEnum,
+    example: InventoryUnitEnum.KG,
+    description: 'Unit of the inventory item',
+  })
+  @IsNotEmpty()
+  @IsEnum(InventoryUnitEnum)
+  unit: string;
 
   @ApiProperty({
     example: 'Fresh red tomatoes',

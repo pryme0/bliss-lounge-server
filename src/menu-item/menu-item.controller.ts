@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { MenuItemService } from './menu-item.service';
 import {
@@ -19,7 +20,11 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-import { CreateMenuItemDto, UpdateMenuItemDto } from 'src/dto';
+import {
+  CreateMenuItemDto,
+  PaginationQueryDto,
+  UpdateMenuItemDto,
+} from 'src/dto';
 import { MenuItem } from './entities/menu-item.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CustomJwtAuthGuard } from 'src/utils/guard';
@@ -44,8 +49,8 @@ export class MenuItemController {
   @Get()
   @ApiOperation({ summary: 'Get all menu items' })
   @ApiResponse({ status: 200, type: [MenuItem] })
-  findAll() {
-    return this.menuItemService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.menuItemService.findAll(query);
   }
 
   @Get(':id')

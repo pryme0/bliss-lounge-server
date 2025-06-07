@@ -38,8 +38,8 @@ export class InventoryService {
   }
 
   // Get All Inventory Items (Paginated)
-  async findAll(paginationQuery: PaginationQueryDto) {
-    const { page = '1', limit = '10', search } = paginationQuery;
+  async findAll(query: PaginationQueryDto) {
+    const { page = '1', limit = '10', search } = query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 

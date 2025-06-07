@@ -6,9 +6,13 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateMenuItemDto, UpdateMenuItemDto } from 'src/dto';
+import {
+  CreateMenuItemDto,
+  PaginationQueryDto,
+  UpdateMenuItemDto,
+} from 'src/dto';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
-import { Repository, In } from 'typeorm';
+import { Repository, In, ILike } from 'typeorm';
 import { MenuItem } from './entities/menu-item.entity';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from 'src/supabase';
@@ -87,14 +91,31 @@ export class MenuItemService {
     }
   }
 
-  async findAll(): Promise<MenuItem[]> {
-    return this.menuItemRepository.find({ relations: ['ingredients'] });
+  async findAll(query: PaginationQueryDto): Promise<MenuItem[]> {
+    const page = parseInt(query.page, 10) || 1;
+    const limit = parseInt(query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    // Text search on 'name'
+    if (query.search) {
+      where.name = ILike(`%${query.search}%`);
+    }
+
+    return this.menuItemRepository.find({
+      where,
+      relations: ['category'],
+      skip,
+      take: limit,
+      order: { name: 'ASC' },
+    });
   }
 
   async findOne(id: string): Promise<MenuItem> {
     const item = await this.menuItemRepository.findOne({
       where: { id },
-      relations: ['ingredients'],
+      relations: ['category'],
     });
     if (!item) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);

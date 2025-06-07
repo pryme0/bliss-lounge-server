@@ -33,7 +33,7 @@ export class MenuItem {
   isAvailable: boolean;
 
   @Column()
-  categoryId: number; // Foreign key
+  categoryId: string;
 
   @ManyToOne(() => Category, (category) => category.menuItems, {
     onDelete: 'CASCADE',

@@ -51,9 +51,10 @@ export class MenuItemController {
   @ApiResponse({ status: 200, type: [MenuItem] })
   findAll(@Query() query: PaginationQueryDto) {
     return this.menuItemService.findAll(
-      parseInt(query.page),
-      parseInt(query.limit),
+      parseInt(query.page) || 1,
+      parseInt(query.limit) || 10,
       query.search,
+      query.categoryId,
     );
   }
 

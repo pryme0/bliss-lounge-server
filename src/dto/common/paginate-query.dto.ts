@@ -18,4 +18,11 @@ export class PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Search query', example: 'John' })
   @IsOptional()
   search?: string;
+
+  @ApiPropertyOptional({
+    description: 'Category id of the menu items',
+    example: 'John',
+  })
+  @IsOptional()
+  categoryId?: string;
 }

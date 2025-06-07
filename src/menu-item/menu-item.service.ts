@@ -96,19 +96,25 @@ export class MenuItemService {
     page: number = 1,
     limit: number = 10,
     search?: string,
+    categoryId?: string,
   ): Promise<PaginatedResponse<MenuItem>> {
     const skip = (page - 1) * limit;
-
     const queryBuilder = this.menuItemRepository
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.category', 'category')
-      .orderBy('menuItem.createdAt', 'DESC') // optional: adjust ordering
+      .orderBy('menuItem.createdAt', 'DESC')
       .skip(skip)
       .take(limit);
 
     if (search) {
-      queryBuilder.where('menuItem.name ILIKE :search', {
+      queryBuilder.andWhere('menuItem.name ILIKE :search', {
         search: `%${search}%`,
+      });
+    }
+
+    if (categoryId) {
+      queryBuilder.andWhere('menuItem.categoryId = :categoryId', {
+        categoryId,
       });
     }
 

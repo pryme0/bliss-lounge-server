@@ -17,7 +17,7 @@ import { Customer } from './entities/customer.entity';
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
-  @Get('customers')
+  @Get()
   @ApiOperation({ summary: 'Get a paginated list of customers' })
   @ApiResponse({
     status: 200,
@@ -32,7 +32,7 @@ export class CustomersController {
     );
   }
 
-  @Get('customers/:id')
+  @Get(':id')
   @ApiOperation({ summary: 'Get a single customer by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'Customer ID' })
   @ApiResponse({
@@ -44,7 +44,7 @@ export class CustomersController {
     return this.customersService.findOne(id);
   }
 
-  @Patch('customers/:id')
+  @Patch(':id')
   @ApiOperation({ summary: 'Update a customer by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'Customer ID' })
   @ApiResponse({ status: 200, description: 'Customer updated successfully' })
@@ -55,7 +55,7 @@ export class CustomersController {
     return this.customersService.update(id, updateCustomerDto);
   }
 
-  @Delete('customers/:id')
+  @Delete(':id')
   @ApiOperation({ summary: 'Soft delete a customer by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'Customer ID' })
   @ApiResponse({

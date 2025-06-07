@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   CreateMenuItemDto,
+  PaginatedResponse,
   PaginationQueryDto,
   UpdateMenuItemDto,
 } from 'src/dto';
@@ -91,25 +92,34 @@ export class MenuItemService {
     }
   }
 
-  async findAll(query: PaginationQueryDto): Promise<MenuItem[]> {
-    const page = parseInt(query.page, 10) || 1;
-    const limit = parseInt(query.limit, 10) || 10;
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+  ): Promise<PaginatedResponse<MenuItem>> {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const queryBuilder = this.menuItemRepository
+      .createQueryBuilder('menuItem')
+      .leftJoinAndSelect('menuItem.category', 'category')
+      .orderBy('menuItem.createdAt', 'DESC') // optional: adjust ordering
+      .skip(skip)
+      .take(limit);
 
-    // Text search on 'name'
-    if (query.search) {
-      where.name = ILike(`%${query.search}%`);
+    if (search) {
+      queryBuilder.where('menuItem.name ILIKE :search', {
+        search: `%${search}%`,
+      });
     }
 
-    return this.menuItemRepository.find({
-      where,
-      relations: ['category'],
-      skip,
-      take: limit,
-      order: { name: 'ASC' },
-    });
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      limit: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<MenuItem> {

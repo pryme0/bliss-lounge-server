@@ -1,6 +1,10 @@
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -8,7 +12,6 @@ import {
 } from 'class-validator';
 
 import { ApiProperty } from '@nestjs/swagger';
-
 export class CreateCustomerDto {
   @ApiProperty({
     description: 'Customer email address',
@@ -25,7 +28,10 @@ export class CreateCustomerDto {
   @IsString()
   fullName: string;
 
-  @ApiProperty({ description: 'Customer phone number', example: '+1234567890' })
+  @ApiProperty({
+    description: 'Customer phone number',
+    example: '+1234567890',
+  })
   @IsNotEmpty()
   @IsString()
   phoneNumber: string;
@@ -44,6 +50,25 @@ export class CreateCustomerDto {
     },
   )
   password: string;
+
+  @ApiProperty({
+    description: 'Array of customer addresses',
+    example: [
+      '123 Main Street, Lagos, Nigeria',
+      '456 Victoria Island, Lagos, Nigeria',
+    ],
+    required: false,
+    type: [String],
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1, {
+    message: 'At least one address is required if addresses are provided',
+  })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 addresses allowed' })
+  addresses?: string[];
 }
 
 export class SignInDto {

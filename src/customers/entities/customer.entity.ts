@@ -27,6 +27,9 @@ export class Customer {
   @Column()
   password: string;
 
+  @Column({ type: 'simple-array', nullable: true })
+  addresses?: string[];
+
   @OneToMany(() => Order, (order) => order.customer)
   orders: Order[];
 

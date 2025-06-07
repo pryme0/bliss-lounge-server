@@ -1,4 +1,4 @@
-import { IsOptional, IsEmail, IsString } from 'class-validator';
+import { IsOptional, IsEmail, IsString, IsArray, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateCustomerDto {
@@ -25,4 +25,23 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   phoneNumber?: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of customer addresses',
+    example: [
+      '123 Main Street, Lagos, Nigeria',
+      '456 Victoria Island, Lagos, Nigeria',
+    ],
+    required: false,
+    type: [String],
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1, {
+    message: 'At least one address is required if addresses are provided',
+  })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 addresses allowed' })
+  addresses?: string[];
 }

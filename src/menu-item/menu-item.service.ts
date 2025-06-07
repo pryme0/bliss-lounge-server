@@ -12,6 +12,7 @@ import { Repository, In } from 'typeorm';
 import { MenuItem } from './entities/menu-item.entity';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from 'src/supabase';
+import { Category } from 'src/category/entities/category.entity';
 
 @Injectable()
 export class MenuItemService {
@@ -20,49 +21,70 @@ export class MenuItemService {
     private readonly menuItemRepository: Repository<MenuItem>,
     @InjectRepository(Inventory)
     private readonly inventoryRepository: Repository<Inventory>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
     @Inject(SUPABASE_CLIENT)
     private readonly supabaseClient: SupabaseClient,
   ) {}
 
-  async create(createMenuItemDto: CreateMenuItemDto): Promise<MenuItem> {
-    // Check if item name already exists
-    const existingItem = await this.menuItemRepository.findOne({
-      where: { name: createMenuItemDto.name },
-    });
-    if (existingItem) {
-      throw new BadRequestException(
-        `Menu item with name "${createMenuItemDto.name}" already exists.`,
-      );
-    }
-
-    let imageUrl: string | undefined;
-    if (createMenuItemDto.image) {
-      // Upload image to Supabase
-      const filePath = `images/${Date.now()}_${createMenuItemDto.image.originalname}`;
-      const { data, error } = await this.supabaseClient.storage
-        .from('menu-items')
-        .upload(filePath, createMenuItemDto.image.buffer, {
-          contentType: createMenuItemDto.image.mimetype,
-        });
-
-      if (error) {
-        throw new InternalServerErrorException('Failed to upload image');
+  async create(
+    input: CreateMenuItemDto,
+    image?: Express.Multer.File,
+  ): Promise<MenuItem> {
+    try {
+      const existingItem = await this.menuItemRepository.findOne({
+        where: { name: input.name },
+      });
+      if (existingItem) {
+        throw new BadRequestException(
+          `Menu item with name "${input.name}" already exists.`,
+        );
       }
 
-      // Get public URL
-      const { data: publicUrlData } = this.supabaseClient.storage
-        .from('menu-items')
-        .getPublicUrl(filePath);
+      // Check if category exists
+      const category = await this.categoryRepository.findOne({
+        where: { id: input.categoryId },
+      });
+      if (!category) {
+        throw new BadRequestException(
+          `Category with ID "${input.categoryId}" not found.`,
+        );
+      }
 
-      imageUrl = publicUrlData?.publicUrl;
+      let imageUrl: string | undefined;
+      if (image) {
+        const filePath = `images/${Date.now()}_${image.originalname}`;
+        const { data, error } = await this.supabaseClient.storage
+          .from('menu-items')
+          .upload(filePath, image.buffer, {
+            contentType: image.mimetype,
+          });
+
+        if (error) {
+          console.log({ error });
+          throw new InternalServerErrorException('Failed to upload image');
+        }
+
+        const { data: publicUrlData } = this.supabaseClient.storage
+          .from('menu-items')
+          .getPublicUrl(filePath);
+
+        imageUrl = publicUrlData?.publicUrl;
+      }
+
+      const menuItem = this.menuItemRepository.create({
+        name: input.name,
+        description: input.description,
+        price: input.price,
+        imageUrl,
+        isAvailable: input.isAvailable ?? true,
+        category,
+      });
+
+      return this.menuItemRepository.save(menuItem);
+    } catch (error) {
+      throw error;
     }
-
-    const menuItem = this.menuItemRepository.create({
-      ...createMenuItemDto,
-      imageUrl,
-    });
-
-    return this.menuItemRepository.save(menuItem);
   }
 
   async findAll(): Promise<MenuItem[]> {
@@ -83,8 +105,12 @@ export class MenuItemService {
   async update(
     id: string,
     updateMenuItemDto: UpdateMenuItemDto,
+    image?: Express.Multer.File,
   ): Promise<MenuItem> {
-    const menuItem = await this.menuItemRepository.findOne({ where: { id } });
+    const menuItem = await this.menuItemRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
     if (!menuItem) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);
     }
@@ -101,7 +127,41 @@ export class MenuItemService {
       }
     }
 
+    // Check if new category exists (if provided)
+    if (updateMenuItemDto.categoryId) {
+      const category = await this.categoryRepository.findOne({
+        where: { id: updateMenuItemDto.categoryId },
+      });
+      if (!category) {
+        throw new BadRequestException(
+          `Category with ID "${updateMenuItemDto.categoryId}" not found.`,
+        );
+      }
+      menuItem.category = category;
+    }
+
+    // Handle image update if necessary
+    if (image) {
+      const filePath = `images/${Date.now()}_${(updateMenuItemDto as any).image.originalname}`;
+      const { data, error } = await this.supabaseClient.storage
+        .from('menu-items')
+        .upload(filePath, (updateMenuItemDto as any).image.buffer, {
+          contentType: (updateMenuItemDto as any).image.mimetype,
+        });
+
+      if (error) {
+        throw new InternalServerErrorException('Failed to upload image');
+      }
+
+      const { data: publicUrlData } = this.supabaseClient.storage
+        .from('menu-items')
+        .getPublicUrl(filePath);
+
+      menuItem.imageUrl = publicUrlData?.publicUrl;
+    }
+
     Object.assign(menuItem, updateMenuItemDto);
+
     return this.menuItemRepository.save(menuItem);
   }
 

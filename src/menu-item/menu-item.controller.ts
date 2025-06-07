@@ -36,9 +36,9 @@ export class MenuItemController {
   @ApiBody({ type: CreateMenuItemDto })
   create(
     @Body() createMenuItemDto: CreateMenuItemDto,
-    @UploadedFile() imageFile?: Express.Multer.File,
+    @UploadedFile() image?: Express.Multer.File,
   ) {
-    return this.menuItemService.create(createMenuItemDto);
+    return this.menuItemService.create(createMenuItemDto, image);
   }
 
   @Get()
@@ -64,8 +64,9 @@ export class MenuItemController {
   update(
     @Param('id') id: string,
     @Body() updateMenuItemDto: UpdateMenuItemDto,
+    @UploadedFile() image?: Express.Multer.File,
   ) {
-    return this.menuItemService.update(id, updateMenuItemDto);
+    return this.menuItemService.update(id, updateMenuItemDto, image);
   }
 
   @Delete(':id')

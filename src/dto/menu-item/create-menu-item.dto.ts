@@ -15,13 +15,6 @@ export class CreateMenuItemDto {
   @IsString()
   name: string;
 
-  @ApiProperty({
-    type: 'string',
-    format: 'binary',
-    description: 'Image file for the menu item',
-  })
-  image: any;
-
   @ApiProperty({ example: 'A tasty cheeseburger with fries', required: false })
   @IsOptional()
   @IsString()
@@ -36,6 +29,14 @@ export class CreateMenuItemDto {
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
+
+  @ApiProperty({
+    example: 'e1781b8d-5f0e-4c0b-a5d7-1a48b437c38c',
+    description: 'Category ID',
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  categoryId: string;
 }
 
 export class UpdateMenuItemDto extends PartialType(CreateMenuItemDto) {}

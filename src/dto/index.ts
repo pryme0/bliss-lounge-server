@@ -5,3 +5,4 @@ export * from './menu-item';
 export * from './transaction';
 export * from './order';
 export * from './admin';
+export * from './category';

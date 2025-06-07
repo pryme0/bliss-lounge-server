@@ -7,11 +7,10 @@ const AppDataSource = new DataSource({
   url: process.env.DB_URL,
   entities: ['dist/**/*.entity{.ts,.js}'],
   migrations: ['dist/database/migrations/*{.ts,.js}'],
-  synchronize: true,
+  synchronize: false,
   ssl: {
     rejectUnauthorized: false,
   },
-  
 });
 
 module.exports = AppDataSource;

@@ -13,6 +13,7 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AdminModule } from './admin/admin.module';
 import { LogAuthHeadersMiddleware } from './utils/guard';
+import { CategoryModule } from './category/category.module';
 @Module({
   imports: [
     JwtModule.register({
@@ -29,6 +30,7 @@ import { LogAuthHeadersMiddleware } from './utils/guard';
     MenuItemModule,
     TransactionsModule,
     AdminModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

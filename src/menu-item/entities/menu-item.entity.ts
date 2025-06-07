@@ -1,9 +1,13 @@
+// src/menu-items/entities/menu-item.entity.ts
 import { Order } from 'src/orders/entities/order.entity';
+import { Category } from 'src/category/entities/category.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToMany,
+  ManyToOne,
+  JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -27,6 +31,15 @@ export class MenuItem {
 
   @Column({ default: true })
   isAvailable: boolean;
+
+  @Column()
+  categoryId: number; // Foreign key
+
+  @ManyToOne(() => Category, (category) => category.menuItems, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'categoryId' })
+  category: Category;
 
   @ManyToMany(() => Order, (order) => order.menuItems)
   orders: Order[];

@@ -27,18 +27,23 @@ export class CustomersService {
   ): Promise<PaginatedResponse<Customer>> {
     const skip = (page - 1) * limit;
 
-    const [data, total] = await this.customerRepository.findAndCount({
-      where: search
-        ? [
-            { email: ILike(`%${search}%`) },
-            { fullName: ILike(`%${search}%`) },
-            { phoneNumber: ILike(`%${search}%`) },
-          ]
-        : {},
-      skip,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.customerRepository
+      .createQueryBuilder('customer')
+      .leftJoinAndSelect('customer.orders', 'orders')
+      .orderBy('customer.createdAt', 'DESC')
+      .addOrderBy('orders.createdAt', 'DESC') 
+      .skip(skip)
+      .take(limit);
+
+    // Add search conditions if provided
+    if (search) {
+      queryBuilder.where(
+        '(customer.email ILIKE :search OR customer.fullName ILIKE :search OR customer.phoneNumber ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const [data, total] = await queryBuilder.getManyAndCount();
 
     return {
       data,

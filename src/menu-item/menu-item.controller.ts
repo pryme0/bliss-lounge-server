@@ -68,15 +68,17 @@ export class MenuItemController {
 
   @Patch(':id')
   @UseGuards(CustomJwtAuthGuard)
+  @UseInterceptors(FileInterceptor('image'))
   @ApiOperation({ summary: 'Update a menu item' })
   @ApiParam({ name: 'id', description: 'Menu item ID' })
   @ApiResponse({ status: 200, type: MenuItem })
   update(
     @Param('id') id: string,
-    @Body() updateMenuItemDto: UpdateMenuItemDto,
+    @Body() input: any,
     @UploadedFile() image?: Express.Multer.File,
   ) {
-    return this.menuItemService.update(id, updateMenuItemDto, image);
+    console.log({ input });
+    return this.menuItemService.update(id, input, image);
   }
 
   @Delete(':id')

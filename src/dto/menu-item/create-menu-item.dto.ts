@@ -28,7 +28,7 @@ export class CreateMenuItemDto {
   @ApiProperty({ example: true, required: false })
   @IsOptional()
   @IsBoolean()
-  isAvailable?: boolean;
+  isAvailable?: string;
 
   @ApiProperty({
     example: 'e1781b8d-5f0e-4c0b-a5d7-1a48b437c38c',

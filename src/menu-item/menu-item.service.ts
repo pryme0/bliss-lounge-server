@@ -46,7 +46,7 @@ export class MenuItemService {
         );
       }
 
-      // Check if category exists
+      // 🗂️ Check if category exists
       const category = await this.categoryRepository.findOne({
         where: { id: input.categoryId },
       });
@@ -77,12 +77,19 @@ export class MenuItemService {
         imageUrl = publicUrlData?.publicUrl;
       }
 
+      const isAvailable =
+        input?.isAvailable === 'true'
+          ? true
+          : input?.isAvailable === 'false'
+            ? false
+            : true;
+
       const menuItem = this.menuItemRepository.create({
         name: input.name,
         description: input.description,
         price: input.price,
         imageUrl,
-        isAvailable: input.isAvailable ?? true,
+        isAvailable,
         category,
       });
 
@@ -141,49 +148,58 @@ export class MenuItemService {
 
   async update(
     id: string,
-    updateMenuItemDto: UpdateMenuItemDto,
+    input: UpdateMenuItemDto,
     image?: Express.Multer.File,
   ): Promise<MenuItem> {
+    // 🛠️ Convert isAvailable from string to boolean
+    const isAvailable =
+      input?.isAvailable === 'true'
+        ? true
+        : input?.isAvailable === 'false'
+          ? false
+          : undefined; // Let’s use undefined if not provided
+
     const menuItem = await this.menuItemRepository.findOne({
       where: { id },
       relations: ['category'],
     });
+
     if (!menuItem) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);
     }
 
-    // Check for duplicate name
-    if (updateMenuItemDto.name && updateMenuItemDto.name !== menuItem.name) {
+    // 🔎 Check for duplicate name
+    if (input.name && input.name !== menuItem.name) {
       const existingItem = await this.menuItemRepository.findOne({
-        where: { name: updateMenuItemDto.name },
+        where: { name: input.name },
       });
       if (existingItem) {
         throw new BadRequestException(
-          `Menu item with name "${updateMenuItemDto.name}" already exists.`,
+          `Menu item with name "${input.name}" already exists.`,
         );
       }
     }
 
-    // Check if new category exists (if provided)
-    if (updateMenuItemDto.categoryId) {
+    // 🗂️ Check if new category exists (if provided)
+    if (input.categoryId) {
       const category = await this.categoryRepository.findOne({
-        where: { id: updateMenuItemDto.categoryId },
+        where: { id: input.categoryId },
       });
       if (!category) {
         throw new BadRequestException(
-          `Category with ID "${updateMenuItemDto.categoryId}" not found.`,
+          `Category with ID "${input.categoryId}" not found.`,
         );
       }
       menuItem.category = category;
     }
 
-    // Handle image update if necessary
+    // 🖼️ Handle image update if necessary
     if (image) {
-      const filePath = `images/${Date.now()}_${(updateMenuItemDto as any).image.originalname}`;
+      const filePath = `images/${Date.now()}_${(input as any).image.originalname}`;
       const { data, error } = await this.supabaseClient.storage
         .from('menu-items')
-        .upload(filePath, (updateMenuItemDto as any).image.buffer, {
-          contentType: (updateMenuItemDto as any).image.mimetype,
+        .upload(filePath, (input as any).image.buffer, {
+          contentType: (input as any).image.mimetype,
         });
 
       if (error) {
@@ -197,7 +213,13 @@ export class MenuItemService {
       menuItem.imageUrl = publicUrlData?.publicUrl;
     }
 
-    Object.assign(menuItem, updateMenuItemDto);
+    // 🔧 Assign other fields, but exclude isAvailable for explicit handling
+    Object.assign(menuItem, input);
+
+    // 🛠️ Assign the converted isAvailable if it was provided
+    if (isAvailable !== undefined) {
+      menuItem.isAvailable = isAvailable;
+    }
 
     return this.menuItemRepository.save(menuItem);
   }

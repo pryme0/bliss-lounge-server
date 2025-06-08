@@ -31,7 +31,7 @@ export class CustomersService {
       .createQueryBuilder('customer')
       .leftJoinAndSelect('customer.orders', 'orders')
       .orderBy('customer.createdAt', 'DESC')
-      .addOrderBy('orders.createdAt', 'DESC') 
+      .addOrderBy('orders.createdAt', 'DESC')
       .skip(skip)
       .take(limit);
 

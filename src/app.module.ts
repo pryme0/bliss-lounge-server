@@ -18,7 +18,7 @@ import { CategoryModule } from './category/category.module';
   imports: [
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '1H' },
+      signOptions: { expiresIn: '2D' },
       global: true,
     }),
     ConfigModule.forRoot({ isGlobal: true }),

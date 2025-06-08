@@ -13,6 +13,7 @@ import { Order } from 'src/orders/entities/order.entity';
 import { Repository } from 'typeorm';
 import { Transaction } from './entities/transaction.entity';
 import { PaystackService } from 'src/utils';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class TransactionService {
@@ -28,6 +29,7 @@ export class TransactionService {
     createTransactionDto: CreateTransactionDto,
   ): Promise<Transaction> {
     const { orderId, amount, paymentMethod } = createTransactionDto;
+
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
     });
@@ -36,11 +38,16 @@ export class TransactionService {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
+    // Generate a unique reference using orderId and a short unique ID
+    const uniqueSuffix = uuidv4();
+    const referenceId = `${orderId}-${uniqueSuffix}`;
+
     const transaction = this.transactionRepository.create({
       amount,
       paymentMethod,
       status: TransactionStatus.PENDING,
       order,
+      referenceId, // Assign the generated referenceId
     });
 
     return this.transactionRepository.save(transaction);
@@ -110,14 +117,13 @@ export class TransactionService {
 
   async verifyPayment(reference: string): Promise<any> {
     const response = await this.paystackService.verifyTransaction(reference);
-
     if (response.data.status === 'success') {
       // Update transaction status
       await this.transactionRepository.update(
         { referenceId: reference },
         { status: TransactionStatus.COMPLETED },
       );
-      return { status: 'completed' };
+      return { status: TransactionStatus.COMPLETED };
     } else {
       await this.transactionRepository.update(
         { referenceId: reference },

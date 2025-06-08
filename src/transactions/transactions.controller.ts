@@ -41,6 +41,18 @@ export class TransactionController {
     return this.transactionService.findOne(id);
   }
 
+  @Patch('/verify/:reference')
+  @ApiOperation({ summary: 'Retrieve a single transaction by ID' })
+  @ApiParam({
+    name: 'reference',
+    type: 'string',
+    description: 'Transaction reference',
+  })
+  @ApiResponse({ status: 200, type: Transaction })
+  async verify(@Param('reference') reference: string) {
+    return await this.transactionService.verifyPayment(reference);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update a transaction' })
   @ApiParam({ name: 'id', type: 'string', description: 'Transaction ID' })

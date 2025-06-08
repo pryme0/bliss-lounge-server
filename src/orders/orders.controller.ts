@@ -13,6 +13,7 @@ import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import {
   CreateOrderDto,
+  CreateOrderResponse,
   PaginatedResponse,
   PaginationQueryDto,
   UpdateOrderDto,
@@ -26,7 +27,9 @@ export class OrdersController {
   @Post()
   @ApiOperation({ summary: 'Create an order' })
   @ApiResponse({ status: 201, description: 'Order created', type: Order })
-  async create(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
+  async create(
+    @Body() createOrderDto: CreateOrderDto,
+  ): Promise<CreateOrderResponse> {
     return this.ordersService.create(createOrderDto);
   }
 

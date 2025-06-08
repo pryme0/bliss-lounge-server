@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -9,7 +10,15 @@ import { Order } from './entities/order.entity';
 
 import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 import { Customer } from 'src/customers/entities/customer.entity';
-import { CreateOrderDto, PaginationQueryDto, UpdateOrderDto } from 'src/dto';
+import {
+  CreateOrderDto,
+  CreateOrderResponse,
+  PaginationQueryDto,
+  PaymentMethod,
+  UpdateOrderDto,
+} from 'src/dto';
+import { TransactionService } from 'src/transactions/transactions.service';
+import { Transaction } from 'src/transactions/entities/transaction.entity';
 
 @Injectable()
 export class OrdersService {
@@ -20,12 +29,13 @@ export class OrdersService {
     private readonly menuItemRepository: Repository<MenuItem>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    private readonly transactionService: TransactionService,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    const { customerId, menuItemIds, totalPrice } = createOrderDto;
+  async create(input: CreateOrderDto): Promise<CreateOrderResponse> {
+    const { customerId, menuItemIds, totalPrice } = input;
 
-    // Validate customer existence
+    // Step 1: Validate customer existence
     const customer = await this.customerRepository.findOne({
       where: { id: customerId },
     });
@@ -33,7 +43,7 @@ export class OrdersService {
       throw new NotFoundException('Customer not found');
     }
 
-    // Validate menu items existence
+    // Step 2: Validate menu items existence
     const menuItems = await this.menuItemRepository.find({
       where: { id: In(menuItemIds) },
     });
@@ -41,28 +51,62 @@ export class OrdersService {
       throw new BadRequestException('One or more menu items not found');
     }
 
-    // Calculate server-side total price
+    // Step 3: Calculate server-side total price
     const calculatedTotal = menuItems.reduce(
       (sum, item) => sum + Number(item.price),
       0,
     );
-
-    // Optional: allow a small floating point tolerance (e.g. 2 decimal places)
-    const isTotalValid = Math.abs(calculatedTotal - totalPrice) < 0.01;
+    const isTotalValid = Math.abs(calculatedTotal - totalPrice +1500 ) < 0.01;
     if (!isTotalValid) {
       throw new BadRequestException(
         `Total price mismatch. Expected: ${calculatedTotal.toFixed(2)}`,
       );
     }
 
-    // Create the order entity
+    // Step 4: Create and save the order
     const order = this.orderRepository.create({
       customer,
       menuItems,
       totalPrice: calculatedTotal,
     });
 
-    return this.orderRepository.save(order);
+    await this.orderRepository.save(order);
+
+    let transaction: Transaction;
+    try {
+      // Step 5: Create transaction
+      transaction = await this.transactionService.create({
+        orderId: order.id,
+        paymentMethod: PaymentMethod.CARD,
+        amount: order.totalPrice,
+      });
+    } catch (error) {
+      // Rollback order if transaction creation fails
+      await this.orderRepository.softDelete(order.id);
+      throw new InternalServerErrorException(
+        `Failed to create transaction: ${error.message || 'Unknown error'}`,
+      );
+    }
+
+    let payment: any;
+    try {
+      // Step 6: Initialize payment with Paystack
+      payment = await this.transactionService.initializePayment(
+        transaction.amount,
+        order.customer.email,
+        order.id,
+      );
+    } catch (error) {
+      // Rollback transaction and order if payment initialization fails
+      await this.transactionService.remove(transaction.id);
+      await this.orderRepository.softDelete(order.id);
+      throw new InternalServerErrorException(
+        `Failed to initialize payment: ${error.message || 'Unknown error'}`,
+      );
+    }
+
+    // Step 7: Return payment information
+    return payment;
   }
 
   async findAll(

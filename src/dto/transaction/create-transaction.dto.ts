@@ -28,9 +28,4 @@ export class CreateTransactionDto {
   @ApiProperty({ example: 'order-uuid' })
   @IsUUID()
   orderId: string;
-
-  @ApiProperty({ example: 'reference_id' })
-  @IsString()
-  @IsNotEmpty()
-  reference_id: string;
 }

@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsUUID, IsNumber, Min } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  Min,
+  IsString,
+} from 'class-validator';
 
 export class CreateOrderDto {
   @ApiProperty({
@@ -20,4 +27,29 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   totalPrice: number;
+}
+
+export class CreateOrderResponse {
+  @ApiProperty({
+    example: 'https://paystack-payment-initialization',
+    description: 'payment authorization url',
+  })
+  @IsNotEmpty()
+  @IsString()
+  authorization_url: string;
+  @ApiProperty({
+    example: 'iiwjw08',
+    description: 'Payment authorization access_code',
+  })
+  @IsNotEmpty()
+  @IsString()
+  access_code: string;
+
+  @ApiProperty({
+    example: 'iiwjjwury-8948wjhry4je8w-ke4834j383',
+    description: 'Payment reference code',
+  })
+  @IsNotEmpty()
+  @IsString()
+  reference: string;
 }

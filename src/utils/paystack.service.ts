@@ -18,10 +18,11 @@ export class PaystackService {
   ): Promise<any> {
     try {
       const response = await this.paystackInstance.transaction.initialize({
-        amount: amount * 100, // amount in kobo (₦1 = 100 kobo)
+        amount: amount * 100,
         email,
         reference,
         currency: 'NGN',
+        callback_url: 'http://localhost:3000/checkout/success',
       });
       return response;
     } catch (error) {
@@ -32,9 +33,7 @@ export class PaystackService {
 
   async verifyTransaction(reference: string): Promise<any> {
     try {
-      const response =
-        await this.paystackInstance.transaction.verify(reference);
-      return response;
+      return await this.paystackInstance.transaction.verify(reference);
     } catch (error) {
       console.error('Paystack verifyTransaction error:', error);
       throw new InternalServerErrorException('Payment verification failed');

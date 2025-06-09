@@ -1,4 +1,4 @@
-import { IsOptional, IsNumberString } from 'class-validator';
+import { IsOptional, IsNumberString, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PaginationQueryDto {
@@ -25,4 +25,12 @@ export class PaginationQueryDto {
   })
   @IsOptional()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Customer id',
+    example: '99377-393swj3899-838383',
+  })
+  @IsUUID()
+  @IsOptional()
+  customerId?: string;
 }

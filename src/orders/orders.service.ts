@@ -56,7 +56,7 @@ export class OrdersService {
       (sum, item) => sum + Number(item.price),
       0,
     );
-    const isTotalValid = Math.abs(calculatedTotal - totalPrice +1500 ) < 0.01;
+    const isTotalValid = Math.abs(calculatedTotal - totalPrice + 1500) < 0.01;
     if (!isTotalValid) {
       throw new BadRequestException(
         `Total price mismatch. Expected: ${calculatedTotal.toFixed(2)}`,
@@ -115,7 +115,14 @@ export class OrdersService {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
 
+    // Build where clause conditionally
+    const whereClause: any = {};
+    if (query.customerId) {
+      whereClause.customer = { id: query.customerId };
+    }
+
     const [data, total] = await this.orderRepository.findAndCount({
+      where: whereClause,
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },

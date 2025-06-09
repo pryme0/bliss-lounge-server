@@ -1,8 +1,5 @@
-// src/orders/order.entity.ts
+// src/orders/entities/order.entity.ts
 
-import { Customer } from 'src/customers/entities/customer.entity';
-import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
-import { Transaction } from 'src/transactions/entities/transaction.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,10 +7,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  ManyToMany,
-  JoinTable,
   OneToMany,
 } from 'typeorm';
+import { Customer } from 'src/customers/entities/customer.entity';
+import { Transaction } from 'src/transactions/entities/transaction.entity';
+import { OrderItem } from './order-item.entity';
 
 @Entity()
 export class Order {
@@ -23,9 +21,11 @@ export class Order {
   @ManyToOne(() => Customer, (customer) => customer.orders, { eager: true })
   customer: Customer;
 
-  @ManyToMany(() => MenuItem, { eager: true })
-  @JoinTable()
-  menuItems: MenuItem[];
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
+    cascade: true,
+    eager: true,
+  })
+  orderItems: OrderItem[];
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalPrice: number;
@@ -35,6 +35,9 @@ export class Order {
 
   @Column({ default: 'pending' })
   status: 'pending' | 'completed' | 'cancelled';
+
+  @Column({ nullable: true })
+  deliveryAddress?: string;
 
   @CreateDateColumn()
   createdAt: Date;

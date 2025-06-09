@@ -1,5 +1,11 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsArray, IsUUID, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsOptional,
+  IsArray,
+  IsUUID,
+  IsEnum,
+  IsNotEmpty,
+} from 'class-validator';
 
 export enum OrderStatus {
   PENDING = 'pending',
@@ -8,11 +14,11 @@ export enum OrderStatus {
 }
 
 export class UpdateOrderDto {
-  @ApiPropertyOptional({ type: [String], description: 'List of menu item IDs' })
-  @IsOptional()
+  @ApiProperty({ type: [String], description: 'List of menu item IDs' })
   @IsArray()
   @IsUUID('all', { each: true })
-  menuItemIds?: string[];
+  @IsNotEmpty()
+  items: { menuItemId: string; quantity: number }[];
 
   @ApiPropertyOptional({ enum: OrderStatus, description: 'Order status' })
   @IsOptional()

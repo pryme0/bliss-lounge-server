@@ -19,6 +19,7 @@ import {
 } from 'src/dto';
 import { TransactionService } from 'src/transactions/transactions.service';
 import { Transaction } from 'src/transactions/entities/transaction.entity';
+import { OrderItem } from './entities/order-item.entity';
 
 @Injectable()
 export class OrdersService {
@@ -30,12 +31,19 @@ export class OrdersService {
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
     private readonly transactionService: TransactionService,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
   ) {}
 
-  async create(input: CreateOrderDto): Promise<CreateOrderResponse> {
-    const { customerId, menuItemIds, totalPrice } = input;
+  async create(input: {
+    customerId: string;
+    items: { menuItemId: string; quantity: number }[];
+    totalPrice: number;
+    deliveryAddress: string;
+  }): Promise<CreateOrderResponse> {
+    const { customerId, items, totalPrice, deliveryAddress } = input;
 
-    // Step 1: Validate customer existence
+    // Validate customer existence
     const customer = await this.customerRepository.findOne({
       where: { id: customerId },
     });
@@ -43,7 +51,10 @@ export class OrdersService {
       throw new NotFoundException('Customer not found');
     }
 
-    // Step 2: Validate menu items existence
+    // Extract all menuItemIds from items
+    const menuItemIds = items.map((item) => item.menuItemId);
+
+    // Fetch menu items from DB
     const menuItems = await this.menuItemRepository.find({
       where: { id: In(menuItemIds) },
     });
@@ -51,30 +62,47 @@ export class OrdersService {
       throw new BadRequestException('One or more menu items not found');
     }
 
-    // Step 3: Calculate server-side total price
-    const calculatedTotal = menuItems.reduce(
-      (sum, item) => sum + Number(item.price),
+    // Map menuItems by id for quick access
+    const menuItemsMap = new Map(menuItems.map((mi) => [mi.id, mi]));
+
+    // Create orderItems with quantity and price
+    const orderItems = items.map(({ menuItemId, quantity }) => {
+      const menuItem = menuItemsMap.get(menuItemId)!;
+      return {
+        menuItem,
+        menuItemId,
+        quantity,
+        price: menuItem.price,
+      };
+    });
+
+    // Calculate total price from orderItems
+    const calculatedTotal = orderItems.reduce(
+      (sum, item) => sum + Number(item.price) * item.quantity + 1500,
       0,
     );
-    const isTotalValid = Math.abs(calculatedTotal - totalPrice + 1500) < 0.01;
+
+    // Validate total price matches
+    const isTotalValid = Math.abs(calculatedTotal - totalPrice) < 0.01;
     if (!isTotalValid) {
       throw new BadRequestException(
         `Total price mismatch. Expected: ${calculatedTotal.toFixed(2)}`,
       );
     }
 
-    // Step 4: Create and save the order
+    // Create order entity with customer and orderItems
     const order = this.orderRepository.create({
       customer,
-      menuItems,
+      orderItems,
       totalPrice: calculatedTotal,
+      deliveryAddress,
     });
 
     await this.orderRepository.save(order);
 
     let transaction: Transaction;
     try {
-      // Step 5: Create transaction
+      // Create transaction
       transaction = await this.transactionService.create({
         orderId: order.id,
         paymentMethod: PaymentMethod.CARD,
@@ -90,7 +118,7 @@ export class OrdersService {
 
     let payment: any;
     try {
-      // Step 6: Initialize payment with Paystack
+      // Initialize payment with Paystack
       payment = await this.transactionService.initializePayment(
         transaction.amount,
         order.customer.email,
@@ -105,7 +133,7 @@ export class OrdersService {
       );
     }
 
-    // Step 7: Return payment information
+    // Return payment information
     return payment;
   }
 
@@ -134,7 +162,7 @@ export class OrdersService {
   async findOne(id: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['menuItems', 'customer', 'transactions'],
+      relations: ['orderItems', 'customer', 'transactions'],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
@@ -145,20 +173,57 @@ export class OrdersService {
   async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
 
-    if (updateOrderDto.menuItemIds) {
+    if (updateOrderDto.items) {
+      const menuItemIds = updateOrderDto.items.map((item) => item.menuItemId);
+
+      // Fetch menu items to validate and get prices
       const menuItems = await this.menuItemRepository.find({
-        where: { id: In(updateOrderDto.menuItemIds) },
+        where: { id: In(menuItemIds) },
       });
-      if (menuItems.length !== updateOrderDto.menuItemIds.length) {
+
+      if (menuItems.length !== menuItemIds.length) {
         throw new BadRequestException('One or more menu items not found');
       }
-      order.menuItems = menuItems;
+
+      const menuItemsMap = new Map(menuItems.map((mi) => [mi.id, mi]));
+
+      // Remove existing orderItems for this order
+      await this.orderItemRepository.delete({ order: { id: order.id } });
+
+      // Create new OrderItem entities
+      const newOrderItems = updateOrderDto.items.map(
+        ({ menuItemId, quantity }) => {
+          const menuItem = menuItemsMap.get(menuItemId)!;
+          return this.orderItemRepository.create({
+            menuItem,
+            menuItemId,
+            quantity,
+            price: menuItem.price,
+            order,
+            orderId: order.id,
+          });
+        },
+      );
+
+      // Save the new order items
+      await this.orderItemRepository.save(newOrderItems);
+
+      // Assign to order
+      order.orderItems = newOrderItems;
+
+      // Recalculate total price based on new items
+      order.totalPrice = newOrderItems.reduce(
+        (sum, item) => sum + Number(item.price) * item.quantity,
+        0,
+      );
     }
 
+    // Update status if provided
     if (updateOrderDto.status) {
       order.status = updateOrderDto.status;
     }
 
+    // Save and return updated order
     return this.orderRepository.save(order);
   }
 

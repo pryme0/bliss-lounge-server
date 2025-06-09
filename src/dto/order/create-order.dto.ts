@@ -21,12 +21,20 @@ export class CreateOrderDto {
   @IsArray()
   @IsUUID('all', { each: true })
   @IsNotEmpty()
-  menuItemIds: string[];
+  items: { menuItemId: string; quantity: number }[];
 
   @ApiProperty({ example: 59.99, description: 'Total price of the order' })
   @IsNumber()
   @Min(0)
   totalPrice: number;
+
+  @ApiProperty({
+    example: '29 usuma street',
+    description: 'Customers delivery address',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  deliveryAddress: string;
 }
 
 export class CreateOrderResponse {

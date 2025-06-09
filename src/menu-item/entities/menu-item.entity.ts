@@ -1,11 +1,8 @@
-// src/menu-items/entities/menu-item.entity.ts
-import { Order } from 'src/orders/entities/order.entity';
 import { Category } from 'src/category/entities/category.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToMany,
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
@@ -40,9 +37,6 @@ export class MenuItem {
   })
   @JoinColumn({ name: 'categoryId' })
   category: Category;
-
-  @ManyToMany(() => Order, (order) => order.menuItems)
-  orders: Order[];
 
   @CreateDateColumn()
   createdAt: Date;

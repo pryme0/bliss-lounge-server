@@ -140,7 +140,7 @@ export class AuthService {
     });
   }
 
-  async resetPassword(input: ResetPasswordDto): Promise<void> {
+  async resetPassword(input: ResetPasswordDto): Promise<{ message: string }> {
     const customer = await this.customerRepository.findOne({
       where: { email: input.email.toLowerCase() },
     });
@@ -166,5 +166,6 @@ export class AuthService {
     customer.resetPasswordExpires = null;
 
     await this.customerRepository.save(customer);
+    return { message: 'Password reset successfully' };
   }
 }

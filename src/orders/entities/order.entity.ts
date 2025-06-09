@@ -34,7 +34,7 @@ export class Order {
   transactions: Transaction[];
 
   @Column({ default: 'pending' })
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled' | 'out-for-delivery';
 
   @Column({ nullable: true })
   deliveryAddress?: string;

@@ -11,6 +11,7 @@ export enum OrderStatus {
   PENDING = 'pending',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  OUTFORDELIVERY = 'out-for-delivery',
 }
 
 export class UpdateOrderDto {

@@ -77,7 +77,6 @@ export class MenuItemController {
     @Body() input: any,
     @UploadedFile() image?: Express.Multer.File,
   ) {
-    console.log({ input });
     return this.menuItemService.update(id, input, image);
   }
 

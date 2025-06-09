@@ -22,7 +22,7 @@ export class PaystackService {
         email,
         reference,
         currency: 'NGN',
-        callback_url: 'http://localhost:3000/checkout/success',
+        callback_url: process.env.CLIENT_CHECKOUT_SUCCESS_URL,
       });
       return response;
     } catch (error) {

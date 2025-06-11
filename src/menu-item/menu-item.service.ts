@@ -3,100 +3,143 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  ConflictException,
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   CreateMenuItemDto,
-  PaginatedResponse,
-  PaginationQueryDto,
   UpdateMenuItemDto,
+  PaginatedResponse,
 } from 'src/dto';
-import { Inventory } from 'src/inventory/entities/inventory.entity';
-import { Repository, In, ILike } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { MenuItem } from './entities/menu-item.entity';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from 'src/supabase';
 import { Category } from 'src/category/entities/category.entity';
+import { Recipe } from 'src/recipe/entities/recipe.entity';
+import { RecipeService } from 'src/recipe/recipe.service';
 
 @Injectable()
 export class MenuItemService {
   constructor(
     @InjectRepository(MenuItem)
     private readonly menuItemRepository: Repository<MenuItem>,
-    @InjectRepository(Inventory)
-    private readonly inventoryRepository: Repository<Inventory>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Recipe)
+    private readonly recipeRepository: Repository<Recipe>,
     @Inject(SUPABASE_CLIENT)
     private readonly supabaseClient: SupabaseClient,
+    private readonly recipeService: RecipeService,
   ) {}
 
   async create(
     input: CreateMenuItemDto,
     image?: Express.Multer.File,
   ): Promise<MenuItem> {
-    try {
-      const existingItem = await this.menuItemRepository.findOne({
-        where: { name: input.name },
-      });
-      if (existingItem) {
-        throw new BadRequestException(
-          `Menu item with name "${input.name}" already exists.`,
-        );
-      }
+    return this.menuItemRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        try {
+          // Validate menu item name
+          const existingItem = await transactionalEntityManager.findOne(
+            MenuItem,
+            {
+              where: { name: input.name },
+            },
+          );
+          if (existingItem) {
+            throw new BadRequestException(
+              `Menu item with name "${input.name}" already exists.`,
+            );
+          }
 
-      // 🗂️ Check if category exists
-      const category = await this.categoryRepository.findOne({
-        where: { id: input.categoryId },
-      });
-      if (!category) {
-        throw new BadRequestException(
-          `Category with ID "${input.categoryId}" not found.`,
-        );
-      }
+          // Validate category
+          const category = await transactionalEntityManager.findOne(Category, {
+            where: { id: input.categoryId },
+          });
+          if (!category) {
+            throw new BadRequestException(
+              `Category with ID "${input.categoryId}" not found.`,
+            );
+          }
 
-      let imageUrl: string | undefined;
-      if (image) {
-        const filePath = `images/${Date.now()}_${image.originalname}`;
-        const { data, error } = await this.supabaseClient.storage
-          .from('menu-items')
-          .upload(filePath, image.buffer, {
-            contentType: image.mimetype,
+          // Handle image upload
+          let imageUrl: string | undefined;
+          if (image) {
+            const filePath = `images/${Date.now()}_${image.originalname}`;
+            const { data, error } = await this.supabaseClient.storage
+              .from('menu-items')
+              .upload(filePath, image.buffer, {
+                contentType: image.mimetype,
+              });
+
+            if (error) {
+              throw new InternalServerErrorException('Failed to upload image');
+            }
+
+            const { data: publicUrlData } = this.supabaseClient.storage
+              .from('menu-items')
+              .getPublicUrl(filePath);
+
+            imageUrl = publicUrlData?.publicUrl;
+          }
+
+          // Create menu item
+          const menuItem = transactionalEntityManager.create(MenuItem, {
+            name: input.name,
+            description: input.description,
+            price: input.price,
+            cost: input.cost ?? 0,
+            imageUrl,
+            isAvailable: false,
+            category,
           });
 
-        if (error) {
-          console.log({ error });
-          throw new InternalServerErrorException('Failed to upload image');
+          const savedMenuItem = await transactionalEntityManager.save(menuItem);
+
+          // Create recipes if provided
+          let calculatedCost = input.cost ?? 0;
+          if (input.recipes && input.recipes.length > 0) {
+            // Validate no duplicate inventory IDs
+            const inventoryIds = input.recipes.map((r) => r.inventoryId);
+            if (new Set(inventoryIds).size !== inventoryIds.length) {
+              throw new BadRequestException(
+                'Duplicate inventory IDs in recipes',
+              );
+            }
+
+            for (const recipeDto of input.recipes) {
+              await this.recipeService.createRecipe(
+                {
+                  menuItemId: savedMenuItem.id,
+                  inventoryId: recipeDto.inventoryId,
+                  quantity: recipeDto.quantity,
+                  unit: recipeDto.unit,
+                },
+              );
+            }
+
+            // Calculate cost based on recipes
+            calculatedCost = await this.calculateMenuItemCost(
+              savedMenuItem.id,
+              transactionalEntityManager,
+            );
+          }
+
+          // Update cost and availability
+          savedMenuItem.cost = calculatedCost;
+          savedMenuItem.isAvailable =
+            await this.recipeService.checkMenuItemAvailability(
+              savedMenuItem.id,
+              { transactionalEntityManager },
+            );
+          return await transactionalEntityManager.save(savedMenuItem);
+        } catch (error) {
+          throw error;
         }
-
-        const { data: publicUrlData } = this.supabaseClient.storage
-          .from('menu-items')
-          .getPublicUrl(filePath);
-
-        imageUrl = publicUrlData?.publicUrl;
-      }
-
-      const isAvailable =
-        input?.isAvailable === 'true'
-          ? true
-          : input?.isAvailable === 'false'
-            ? false
-            : true;
-
-      const menuItem = this.menuItemRepository.create({
-        name: input.name,
-        description: input.description,
-        price: input.price,
-        imageUrl,
-        isAvailable,
-        category,
-      });
-
-      return this.menuItemRepository.save(menuItem);
-    } catch (error) {
-      throw error;
-    }
+      },
+    );
   }
 
   async findAll(
@@ -127,6 +170,15 @@ export class MenuItemService {
 
     const [data, total] = await queryBuilder.getManyAndCount();
 
+    // Update availability and cost for each menu item
+    for (const item of data) {
+      item.cost = await this.calculateMenuItemCost(item.id);
+      item.isAvailable = await this.recipeService.checkMenuItemAvailability(
+        item.id,
+      );
+      await this.menuItemRepository.save(item);
+    }
+
     return {
       data,
       total,
@@ -143,6 +195,12 @@ export class MenuItemService {
     if (!item) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);
     }
+
+    // Update cost and availability
+    item.cost = await this.calculateMenuItemCost(id);
+    item.isAvailable = await this.recipeService.checkMenuItemAvailability(id);
+    await this.menuItemRepository.save(item);
+
     return item;
   }
 
@@ -151,24 +209,15 @@ export class MenuItemService {
     input: UpdateMenuItemDto,
     image?: Express.Multer.File,
   ): Promise<MenuItem> {
-    // 🛠️ Convert isAvailable from string to boolean
-    const isAvailable =
-      input?.isAvailable === 'true'
-        ? true
-        : input?.isAvailable === 'false'
-          ? false
-          : undefined; // Let’s use undefined if not provided
-
     const menuItem = await this.menuItemRepository.findOne({
       where: { id },
       relations: ['category'],
     });
-
     if (!menuItem) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);
     }
 
-    // 🔎 Check for duplicate name
+    // Check for duplicate name
     if (input.name && input.name !== menuItem.name) {
       const existingItem = await this.menuItemRepository.findOne({
         where: { name: input.name },
@@ -180,7 +229,7 @@ export class MenuItemService {
       }
     }
 
-    // 🗂️ Check if new category exists (if provided)
+    // Check if new category exists (if provided)
     if (input.categoryId) {
       const category = await this.categoryRepository.findOne({
         where: { id: input.categoryId },
@@ -193,13 +242,13 @@ export class MenuItemService {
       menuItem.category = category;
     }
 
-    // 🖼️ Handle image update if necessary
+    // Handle image update
     if (image) {
-      const filePath = `images/${Date.now()}_${(input as any).image.originalname}`;
+      const filePath = `images/${Date.now()}_${image.originalname}`;
       const { data, error } = await this.supabaseClient.storage
         .from('menu-items')
-        .upload(filePath, (input as any).image.buffer, {
-          contentType: (input as any).image.mimetype,
+        .upload(filePath, image.buffer, {
+          contentType: image.mimetype,
         });
 
       if (error) {
@@ -213,21 +262,55 @@ export class MenuItemService {
       menuItem.imageUrl = publicUrlData?.publicUrl;
     }
 
-    // 🔧 Assign other fields, but exclude isAvailable for explicit handling
-    Object.assign(menuItem, input);
+    // Assign fields
+    Object.assign(menuItem, {
+      name: input.name ?? menuItem.name,
+      description: input.description ?? menuItem.description,
+      price: input.price ?? menuItem.price,
+      cost: input.cost ?? menuItem.cost,
+    });
 
-    // 🛠️ Assign the converted isAvailable if it was provided
-    if (isAvailable !== undefined) {
-      menuItem.isAvailable = isAvailable;
-    }
-
-    return this.menuItemRepository.save(menuItem);
+    // Update cost and availability
+    const updatedMenuItem = await this.menuItemRepository.save(menuItem);
+    updatedMenuItem.cost = await this.calculateMenuItemCost(id);
+    updatedMenuItem.isAvailable =
+      await this.recipeService.checkMenuItemAvailability(id);
+    return await this.menuItemRepository.save(updatedMenuItem);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.menuItemRepository.delete(id);
-    if (result.affected === 0) {
+    const menuItem = await this.menuItemRepository.findOne({ where: { id } });
+    if (!menuItem) {
       throw new NotFoundException(`Menu item with ID "${id}" not found.`);
     }
+
+    // Check if menu item has associated recipes
+    const recipes = await this.recipeRepository.find({
+      where: { menuItemId: id },
+    });
+    if (recipes.length > 0) {
+      throw new ConflictException(
+        `Cannot delete menu item with ID ${id} because it is used in ${recipes.length} recipe(s).`,
+      );
+    }
+
+    await this.menuItemRepository.delete(id);
+  }
+
+  async calculateMenuItemCost(
+    menuItemId: string,
+    entityManager = this.recipeRepository.manager,
+  ): Promise<number> {
+    const recipes = await entityManager.find(Recipe, {
+      where: { menuItemId },
+      relations: ['inventory'],
+    });
+
+    return recipes.reduce((total, recipe) => {
+      if (!recipe.inventory || recipe.inventory.deletedAt) {
+        return total; // Skip deleted inventory items
+      }
+      return total + recipe.quantity * recipe.inventory.unitPrice;
+    }, 0);
   }
 }

@@ -1,4 +1,5 @@
 import { Category } from 'src/category/entities/category.entity';
+import { Recipe } from 'src/recipe/entities/recipe.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,6 +8,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 @Entity()
@@ -23,6 +25,9 @@ export class MenuItem {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.0 }) // Cost of goods sold based on inventory
+  cost: number;
+
   @Column({ nullable: true })
   imageUrl?: string;
 
@@ -37,6 +42,9 @@ export class MenuItem {
   })
   @JoinColumn({ name: 'categoryId' })
   category: Category;
+
+  @OneToMany(() => Recipe, (recipe) => recipe.menuItem)
+  recipes: Recipe[];
 
   @CreateDateColumn()
   createdAt: Date;

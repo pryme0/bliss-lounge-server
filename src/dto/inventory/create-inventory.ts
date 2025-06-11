@@ -24,7 +24,7 @@ export class CreateInventoryDto {
   @Min(0)
   quantity: number;
 
-  @ApiProperty({ example: 100, description: 'Quantity of the item' })
+  @ApiProperty({ example: 2.5, description: 'Unit price of the item' })
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
@@ -38,6 +38,15 @@ export class CreateInventoryDto {
   @IsNotEmpty()
   @IsEnum(InventoryUnitEnum)
   unit: string;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Minimum stock level to trigger low-stock status',
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  minimumStock: number;
 
   @ApiProperty({
     example: 'Fresh red tomatoes',

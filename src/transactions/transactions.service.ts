@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -10,7 +11,7 @@ import {
   TransactionStatus,
 } from 'src/dto';
 import { Order } from 'src/orders/entities/order.entity';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { Transaction } from './entities/transaction.entity';
 import { PaystackService } from 'src/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,30 +28,32 @@ export class TransactionService {
 
   async create(
     createTransactionDto: CreateTransactionDto,
+    options: { transactionalEntityManager?: EntityManager } = {},
   ): Promise<Transaction> {
+    const { transactionalEntityManager } = options;
+    const manager =
+      transactionalEntityManager || this.transactionRepository.manager;
     const { orderId, amount, paymentMethod } = createTransactionDto;
 
-    const order = await this.orderRepository.findOne({
+    const order = await manager.findOne(Order, {
       where: { id: orderId },
     });
-
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
-    // Generate a unique reference using orderId and a short unique ID
-    const uniqueSuffix = uuidv4();
+    const uniqueSuffix = uuidv4().slice(0, 8);
     const referenceId = `${orderId}-${uniqueSuffix}`;
 
-    const transaction = this.transactionRepository.create({
+    const transaction = manager.create(Transaction, {
       amount,
       paymentMethod,
       status: TransactionStatus.PENDING,
       order,
-      referenceId, // Assign the generated referenceId
+      referenceId,
     });
 
-    return this.transactionRepository.save(transaction);
+    return manager.save(transaction);
   }
 
   async findAll(): Promise<Transaction[]> {
@@ -62,11 +65,9 @@ export class TransactionService {
       where: { id },
       relations: ['order'],
     });
-
     if (!transaction) {
       throw new NotFoundException(`Transaction with ID ${id} not found`);
     }
-
     return transaction;
   }
 
@@ -75,9 +76,7 @@ export class TransactionService {
     updateTransactionDto: UpdateTransactionDto,
   ): Promise<Transaction> {
     const transaction = await this.findOne(id);
-
     Object.assign(transaction, updateTransactionDto);
-
     return this.transactionRepository.save(transaction);
   }
 
@@ -90,35 +89,36 @@ export class TransactionService {
     amount: number,
     email: string,
     orderId: string,
+    transaction: Transaction,
   ): Promise<any> {
-    const reference = `ORD-${orderId}-${Date.now()}`;
+    const reference = transaction.referenceId;
 
-    // Save the transaction with status pending
-    const transaction = this.transactionRepository.create({
-      referenceId: reference,
-      amount,
-      order: { id: orderId },
-      status: TransactionStatus.PENDING,
-    });
-    await this.transactionRepository.save(transaction);
+    try {
+      const response = await this.paystackService.initializeTransaction(
+        amount,
+        email,
+        reference,
+      );
 
-    // Call Paystack to initialize payment
-    const response = await this.paystackService.initializeTransaction(
-      amount,
-      email,
-      reference,
-    );
-
-    return {
-      authorizationUrl: response.data.authorization_url,
-      reference: response.data.reference,
-    };
+      return {
+        authorizationUrl: response.data.authorization_url,
+        access_code: response.data.access_code,
+        reference: response.data.reference,
+      };
+    } catch (error) {
+      await this.transactionRepository.update(
+        { referenceId: reference },
+        { status: TransactionStatus.FAILED },
+      );
+      throw new InternalServerErrorException(
+        `Failed to initialize payment: ${error.message}`,
+      );
+    }
   }
 
   async verifyPayment(reference: string): Promise<any> {
     const response = await this.paystackService.verifyTransaction(reference);
     if (response.data.status === 'success') {
-      // Update transaction status
       await this.transactionRepository.update(
         { referenceId: reference },
         { status: TransactionStatus.COMPLETED },

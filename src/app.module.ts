@@ -16,6 +16,7 @@ import { LogAuthHeadersMiddleware } from './utils/guard';
 import { CategoryModule } from './category/category.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { RecipeModule } from './recipe/recipe.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 @Module({
   imports: [
     JwtModule.register({
@@ -35,6 +36,7 @@ import { RecipeModule } from './recipe/recipe.module';
     CategoryModule,
     ReservationsModule,
     RecipeModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

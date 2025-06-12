@@ -29,7 +29,7 @@ export class Inventory {
   @Column()
   itemName: string;
 
-  @Column('int')
+  @Column('float8')
   quantity: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
@@ -52,7 +52,7 @@ export class Inventory {
   })
   unit: string;
 
-  @Column({ type: 'int', default: 0 }) // Minimum stock level to trigger low-stock status
+  @Column({ type: 'int', default: 0 })
   minimumStock: number;
 
   @OneToMany(() => Recipe, (recipe) => recipe.inventory)

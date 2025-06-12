@@ -153,6 +153,7 @@ export class OrdersService {
               `Insufficient inventory for item ${inventory.itemName}`,
             );
           }
+
           inventory.quantity -= deduction;
           inventory.status =
             inventory.quantity === 0
@@ -160,6 +161,7 @@ export class OrdersService {
               : inventory.quantity <= inventory.minimumStock
                 ? InventoryStatusEnum.LOWSTOCK
                 : InventoryStatusEnum.INSTOCK;
+
           await transactionalEntityManager.save(inventory);
         }
 

@@ -17,8 +17,6 @@ import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import { RecipeService } from 'src/recipe/recipe.service';
 
-console.log({ service: InventoryStatusEnum });
-
 @Injectable()
 export class InventoryService {
   constructor(

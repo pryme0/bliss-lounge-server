@@ -12,6 +12,7 @@ import { Customer } from 'src/customers/entities/customer.entity';
 import {
   CreateOrderDto,
   CreateOrderResponse,
+  InventoryStatusEnum,
   PaginationQueryDto,
   PaymentMethod,
   UpdateOrderDto,
@@ -155,10 +156,10 @@ export class OrdersService {
           inventory.quantity -= deduction;
           inventory.status =
             inventory.quantity === 0
-              ? 'OUTOFSTOCK'
+              ? InventoryStatusEnum.OUTOFSTOCK
               : inventory.quantity <= inventory.minimumStock
-                ? 'LOWSTOCK'
-                : 'INSTOCK';
+                ? InventoryStatusEnum.LOWSTOCK
+                : InventoryStatusEnum.INSTOCK;
           await transactionalEntityManager.save(inventory);
         }
 
@@ -340,8 +341,8 @@ export class OrdersService {
             inventory.quantity += quantity;
             inventory.status =
               inventory.quantity <= inventory.minimumStock
-                ? 'LOWSTOCK'
-                : 'INSTOCK';
+                ? InventoryStatusEnum.LOWSTOCK
+                : InventoryStatusEnum.INSTOCK;
             await transactionalEntityManager.save(inventory);
           }
 
@@ -361,10 +362,10 @@ export class OrdersService {
             inventory.quantity -= deduction;
             inventory.status =
               inventory.quantity === 0
-                ? 'OUTOFSTOCK'
+                ? InventoryStatusEnum.OUTOFSTOCK
                 : inventory.quantity <= inventory.minimumStock
-                  ? 'LOWSTOCK'
-                  : 'INSTOCK';
+                  ? InventoryStatusEnum.LOWSTOCK
+                  : InventoryStatusEnum.INSTOCK;
             await transactionalEntityManager.save(inventory);
           }
 
@@ -431,8 +432,8 @@ export class OrdersService {
           inventory.quantity += quantity;
           inventory.status =
             inventory.quantity <= inventory.minimumStock
-              ? 'LOWSTOCK'
-              : 'INSTOCK';
+              ? InventoryStatusEnum.LOWSTOCK
+              : InventoryStatusEnum.INSTOCK;
           await transactionalEntityManager.save(inventory);
         }
 

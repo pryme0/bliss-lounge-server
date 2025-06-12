@@ -9,7 +9,7 @@ import {
   IsEnum,
   ValidateNested,
 } from 'class-validator';
-import { InventoryUnitEnum } from 'src/inventory/entities/inventory.entity';
+import { InventoryUnitEnum } from '../enum';
 
 export class CreateMenuItemRecipeDto {
   @ApiProperty({

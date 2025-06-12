@@ -7,10 +7,16 @@ import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { SupabaseProvider } from 'src/supabase';
 import { Admin } from 'src/admin/entities/admin.entity';
 import { Category } from 'src/category/entities/category.entity';
+import { RecipeModule } from 'src/recipe/recipe.module';
+import { Recipe } from 'src/recipe/entities/recipe.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MenuItem, Inventory, Admin, Category])],
+  imports: [
+    RecipeModule,
+    TypeOrmModule.forFeature([MenuItem, Inventory, Admin, Category, Recipe]),
+  ],
   controllers: [MenuItemController],
   providers: [SupabaseProvider, MenuItemService],
+  exports: [SupabaseProvider, MenuItemService],
 })
 export class MenuItemModule {}

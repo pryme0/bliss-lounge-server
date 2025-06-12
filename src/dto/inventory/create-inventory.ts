@@ -7,7 +7,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-import { InventoryUnitEnum } from 'src/inventory/entities/inventory.entity';
+import { InventoryUnitEnum } from '../enum';
 
 export class CreateInventoryDto {
   @ApiProperty({

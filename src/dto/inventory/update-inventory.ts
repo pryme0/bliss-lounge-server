@@ -1,46 +1,41 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
 
-export class UpdateMenuItemDto {
+export class UpdateInventoryDto {
   @ApiPropertyOptional({
-    example: 'Margherita Pizza',
-    description: 'Name of the menu item',
+    example: 'Tomatoes',
+    description: 'Name of the inventory item',
   })
   @IsOptional()
   @IsString()
-  name?: string;
+  itemName?: string;
+
+  @ApiPropertyOptional({ example: 100, description: 'Quantity of the item' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quantity?: number;
+
+  @ApiPropertyOptional({ example: 2.5, description: 'Unit price of the item' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
 
   @ApiPropertyOptional({
-    example: 'Classic pizza with tomato and mozzarella',
-    description: 'Description of the menu item',
+    example: 10,
+    description: 'Minimum stock level to trigger low-stock status',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minimumStock?: number;
+
+  @ApiPropertyOptional({
+    example: 'Fresh red tomatoes',
+    description: 'Description of the item',
   })
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiPropertyOptional({
-    example: 12.99,
-    description: 'Price of the menu item',
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  price?: number;
-
-  @ApiPropertyOptional({
-    example: 8.5,
-    description: 'Cost of ingredients for the menu item',
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  cost?: number;
-
-  @ApiPropertyOptional({
-    example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'ID of the category',
-  })
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string;
 }

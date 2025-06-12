@@ -98,25 +98,51 @@ export class MenuItemService {
 
           const savedMenuItem = await transactionalEntityManager.save(menuItem);
 
+          // Debug: Verify savedMenuItem
+          const verifyMenuItem = await transactionalEntityManager.findOne(
+            MenuItem,
+            { where: { id: savedMenuItem.id } },
+          );
+          if (!verifyMenuItem) {
+            throw new InternalServerErrorException(
+              `Failed to persist MenuItem with ID ${savedMenuItem.id}`,
+            );
+          }
+
           // Create recipes if provided
           let calculatedCost = input.cost ?? 0;
-          if (input.recipes && input.recipes.length > 0) {
+          if (input.recipes && typeof input.recipes === 'string') {
+            let parsedRecipes;
+            try {
+              parsedRecipes = JSON.parse(input.recipes);
+              if (!Array.isArray(parsedRecipes)) {
+                throw new Error('Recipes must be an array');
+              }
+            } catch (error) {
+              throw new BadRequestException('Invalid recipes format');
+            }
+
             // Validate no duplicate inventory IDs
-            const inventoryIds = input.recipes.map((r) => r.inventoryId);
+            const inventoryIds = parsedRecipes.map((r) => r.inventoryId);
             if (new Set(inventoryIds).size !== inventoryIds.length) {
               throw new BadRequestException(
                 'Duplicate inventory IDs in recipes',
               );
             }
 
-            for (const recipeDto of input.recipes) {
-              await this.recipeService.createRecipe(
+            for (const recipeDto of parsedRecipes) {
+              if (!recipeDto.inventoryId || !recipeDto.quantity) {
+                throw new BadRequestException('Invalid recipe data');
+              }
+
+              await this.recipeService.createRecipeForMenuItem(
                 {
                   menuItemId: savedMenuItem.id,
                   inventoryId: recipeDto.inventoryId,
-                  quantity: recipeDto.quantity,
+                  quantity: parseFloat(recipeDto.quantity),
                   unit: recipeDto.unit,
                 },
+                transactionalEntityManager,
               );
             }
 
@@ -136,6 +162,7 @@ export class MenuItemService {
             );
           return await transactionalEntityManager.save(savedMenuItem);
         } catch (error) {
+          console.error('Transaction error:', error);
           throw error;
         }
       },
@@ -152,6 +179,8 @@ export class MenuItemService {
     const queryBuilder = this.menuItemRepository
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.category', 'category')
+      .leftJoinAndSelect('menuItem.recipes', 'recipes')
+      .leftJoinAndSelect('recipes.inventory', 'inventory')
       .orderBy('menuItem.createdAt', 'DESC')
       .skip(skip)
       .take(limit);

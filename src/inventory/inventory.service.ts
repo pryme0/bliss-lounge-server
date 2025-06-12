@@ -7,14 +7,17 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   CreateInventoryDto,
+  InventoryStatusEnum,
   PaginationQueryDto,
   UpdateInventoryDto,
 } from 'src/dto';
 import { ILike, Repository, Not, IsNull } from 'typeorm';
-import { Inventory, InventoryStatusEnum } from './entities/inventory.entity';
+import { Inventory } from './entities/inventory.entity';
 import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import { RecipeService } from 'src/recipe/recipe.service';
+
+console.log({ service: InventoryStatusEnum });
 
 @Injectable()
 export class InventoryService {

@@ -7,3 +7,4 @@ export * from './order';
 export * from './admin';
 export * from './category';
 export * from './recipe';
+export * from './enum';

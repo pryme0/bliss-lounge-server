@@ -9,16 +9,16 @@ import {
   OneToMany,
 } from 'typeorm';
 
+export enum InventoryStatusEnum {
+  INSTOCK = 'in-stock',
+  OUTOFSTOCK = 'out-of-stock',
+  LOWSTOCK = 'low-stock',
+}
+
 export enum InventoryUnitEnum {
   KG = 'kg',
   LITERS = 'liters',
   PIECES = 'pieces',
-}
-
-export enum InventoryStatusEnum {
-  INSTOCK = 'in-stock',
-  OUTOFSTOCK = 'out-of-stock',
-  LOWSTOCK = 'low-stock', // Added to indicate low inventory levels
 }
 
 @Entity()

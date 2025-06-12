@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsNumber, Min, IsEnum } from 'class-validator';
-import { InventoryUnitEnum } from 'src/inventory/entities/inventory.entity';
+import { InventoryUnitEnum } from '../enum';
 
 export class UpdateRecipeDto {
   @ApiProperty({

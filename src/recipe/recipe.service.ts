@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CreateRecipeDto, RecipeResponseDto, UpdateRecipeDto } from 'src/dto';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { Recipe } from './entities/recipe.entity';
 
 @Injectable()
@@ -17,8 +17,6 @@ export class RecipeService {
     private recipeRepository: Repository<Recipe>,
     @InjectRepository(MenuItem)
     private menuItemRepository: Repository<MenuItem>,
-    @InjectRepository(Inventory)
-    private inventoryRepository: Repository<Inventory>,
   ) {}
 
   async createRecipe(
@@ -70,6 +68,69 @@ export class RecipeService {
       ...dto,
       unit: dto.unit || inventory.unit,
     });
+    const savedRecipe = await manager.save(recipe);
+
+    return {
+      id: savedRecipe.id,
+      menuItemId: savedRecipe.menuItemId,
+      inventoryId: savedRecipe.inventoryId,
+      quantity: savedRecipe.quantity,
+      unit: savedRecipe.unit,
+      createdAt: savedRecipe.createdAt,
+    };
+  }
+
+  async createRecipeForMenuItem(
+    dto: CreateRecipeDto,
+    manager: EntityManager,
+  ): Promise<RecipeResponseDto> {
+    // Validate MenuItem exists
+    const menuItem = await manager.findOne(MenuItem, {
+      where: { id: dto.menuItemId },
+    });
+    if (!menuItem) {
+      throw new NotFoundException(
+        `MenuItem with ID ${dto.menuItemId} not found`,
+      );
+    }
+
+    // Validate Inventory exists and is not soft-deleted
+    const inventory = await manager.findOne(Inventory, {
+      where: { id: dto.inventoryId, deletedAt: IsNull() },
+    });
+    if (!inventory) {
+      throw new NotFoundException(
+        `Inventory with ID ${dto.inventoryId} not found or is deleted`,
+      );
+    }
+
+    // Validate unit matches inventory unit
+    if (dto.unit && dto.unit !== inventory.unit) {
+      throw new BadRequestException(
+        `Unit ${dto.unit} does not match inventory unit ${inventory.unit} for ${inventory.itemName}`,
+      );
+    }
+
+    // Check for duplicate recipe
+    const existingRecipe = await manager.findOne(Recipe, {
+      where: { menuItemId: dto.menuItemId, inventoryId: dto.inventoryId },
+    });
+    if (existingRecipe) {
+      throw new BadRequestException(
+        `Recipe for MenuItem ${dto.menuItemId} and Inventory ${dto.inventoryId} already exists`,
+      );
+    }
+
+    // Create recipe
+    const recipe = manager.create(Recipe, {
+      menuItemId: dto.menuItemId,
+      inventoryId: dto.inventoryId,
+      menuItem,
+      inventory,
+      quantity: dto.quantity,
+      unit: dto.unit || inventory.unit,
+    });
+
     const savedRecipe = await manager.save(recipe);
 
     return {

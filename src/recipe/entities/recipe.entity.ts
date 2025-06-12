@@ -1,7 +1,4 @@
-import {
-  InventoryUnitEnum,
-  Inventory,
-} from 'src/inventory/entities/inventory.entity';
+import { Inventory } from '../../inventory/entities/inventory.entity';
 import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 import {
   Entity,
@@ -12,6 +9,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+export enum InventoryUnitEnum {
+  KG = 'kg',
+  LITERS = 'liters',
+  PIECES = 'pieces',
+}
 
 @Entity()
 export class Recipe {
@@ -30,7 +33,7 @@ export class Recipe {
   @Column({
     type: 'enum',
     enum: InventoryUnitEnum,
-    nullable: true, // Optional, in case unit is inferred from Inventory
+    default: InventoryUnitEnum.KG,
   })
   unit?: string; // Unit of measurement (e.g., kg, liters, pieces)
 

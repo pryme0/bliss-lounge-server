@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
-import { InventoryUnitEnum } from 'src/inventory/entities/inventory.entity';
+import { InventoryUnitEnum } from '../enum';
 
 export class CreateRecipeDto {
   @ApiProperty({
@@ -35,6 +35,3 @@ export class CreateRecipeDto {
   @IsEnum(InventoryUnitEnum, { message: 'Invalid unit' })
   unit?: InventoryUnitEnum;
 }
-
-
-

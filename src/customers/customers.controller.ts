@@ -8,9 +8,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { PaginatedResponse, PaginationQueryDto } from 'src/dto';
+import {
+  PaginatedResponse,
+  PaginationQueryDto,
+  UpdateCustomerDto,
+} from 'src/dto';
 import { Customer } from './entities/customer.entity';
 
 @Controller('customers')

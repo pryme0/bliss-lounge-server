@@ -60,8 +60,23 @@ export class OrdersService {
           throw new NotFoundException('Customer not found');
         }
 
-        // Extract all menuItemIds from items
-        const menuItemIds = items.map((item) => item.menuItemId);
+        // Deduplicate items by menuItemId, summing quantities
+        const consolidatedItems = new Map<
+          string,
+          { menuItemId: string; quantity: number }
+        >();
+        for (const item of items) {
+          const existing = consolidatedItems.get(item.menuItemId) || {
+            menuItemId: item.menuItemId,
+            quantity: 0,
+          };
+          existing.quantity += item.quantity;
+          consolidatedItems.set(item.menuItemId, existing);
+        }
+        const deduplicatedItems = Array.from(consolidatedItems.values());
+
+        // Extract all menuItemIds from deduplicated items
+        const menuItemIds = deduplicatedItems.map((item) => item.menuItemId);
 
         // Fetch menu items from DB
         const menuItems = await transactionalEntityManager.find(MenuItem, {
@@ -88,7 +103,7 @@ export class OrdersService {
         const menuItemsMap = new Map(menuItems.map((mi) => [mi.id, mi]));
 
         // Create orderItems with quantity and price
-        const orderItems = items.map(({ menuItemId, quantity }) => {
+        const orderItems = deduplicatedItems.map(({ menuItemId, quantity }) => {
           const menuItem = menuItemsMap.get(menuItemId)!;
           return transactionalEntityManager.create(OrderItem, {
             menuItem,
@@ -114,7 +129,7 @@ export class OrdersService {
 
         // Deduct inventory quantities
         const inventoryDeductions = new Map<string, number>();
-        for (const { menuItemId, quantity } of items) {
+        for (const { menuItemId, quantity } of deduplicatedItems) {
           const recipes = await transactionalEntityManager.find(Recipe, {
             where: { menuItemId },
             relations: ['inventory'],

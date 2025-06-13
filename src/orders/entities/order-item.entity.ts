@@ -1,16 +1,16 @@
-// src/orders/entities/order-item.entity.ts
-
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Order } from './order.entity';
 import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 
 @Entity()
+@Unique(['orderId', 'menuItemId'])
 export class OrderItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -23,7 +23,7 @@ export class OrderItem {
   orderId: string;
 
   @ManyToOne(() => MenuItem, { eager: true })
-  @JoinColumn({ name: 'menuorderItemsItemId' })
+  @JoinColumn({ name: 'menuItemId' })
   menuItem: MenuItem;
 
   @Column()
@@ -33,5 +33,5 @@ export class OrderItem {
   quantity: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  price: number; // price at order time
+  price: number;
 }

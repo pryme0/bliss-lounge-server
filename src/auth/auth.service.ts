@@ -31,7 +31,7 @@ export class AuthService {
    * Customer signup
    */
   async signup(createAuthDto: CreateCustomerDto): Promise<{
-    customer: Customer;
+    user: Customer;
     accessToken: string;
     refreshToken: string;
   }> {
@@ -65,7 +65,7 @@ export class AuthService {
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return {
-      customer: savedCustomer,
+      user: savedCustomer,
       accessToken,
       refreshToken,
     };

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, EntityManager } from 'typeorm';
@@ -47,12 +48,34 @@ export class OrdersService {
     private readonly menuItemService: MenuItemService,
   ) {}
 
-  async create(input: CreateOrderDto): Promise<CreateOrderResponse> {
+  async create(
+    input: CreateOrderDto & { requestId?: string },
+  ): Promise<CreateOrderResponse> {
     return this.orderRepository.manager.transaction(
       async (transactionalEntityManager) => {
-        const { customerId, items, totalPrice, deliveryAddress } = input;
+        const { customerId, items, totalPrice, deliveryAddress, requestId } =
+          input;
 
-        // Validate customer existence
+        // Check for idempotency using requestId
+        if (requestId) {
+          const existingOrder = await transactionalEntityManager.findOne(
+            Order,
+            {
+              where: { id: requestId },
+              relations: ['orderItems'],
+            },
+          );
+          if (existingOrder) {
+            return await this.transactionService.initializePayment(
+              existingOrder.totalPrice,
+              existingOrder.customer.email,
+              existingOrder.id,
+              existingOrder.transactions[0],
+            );
+          }
+        }
+
+        // Validate customer
         const customer = await transactionalEntityManager.findOne(Customer, {
           where: { id: customerId },
         });
@@ -60,12 +83,15 @@ export class OrdersService {
           throw new NotFoundException('Customer not found');
         }
 
-        // Deduplicate items by menuItemId, summing quantities
+        // Validate and deduplicate items
         const consolidatedItems = new Map<
           string,
           { menuItemId: string; quantity: number }
         >();
         for (const item of items) {
+          if (!item.menuItemId || item.quantity <= 0) {
+            throw new BadRequestException('Invalid menuItemId or quantity');
+          }
           const existing = consolidatedItems.get(item.menuItemId) || {
             menuItemId: item.menuItemId,
             quantity: 0,
@@ -75,10 +101,22 @@ export class OrdersService {
         }
         const deduplicatedItems = Array.from(consolidatedItems.values());
 
-        // Extract all menuItemIds from deduplicated items
+        // Log deduplicated items
+
+        // Validate deduplication
+        const uniqueMenuItemIds = new Set(
+          deduplicatedItems.map((item) => item.menuItemId),
+        );
+        if (uniqueMenuItemIds.size !== deduplicatedItems.length) {
+          throw new BadRequestException(
+            'Duplicate menuItemIds found after deduplication',
+          );
+        }
+
+        // Extract menuItemIds
         const menuItemIds = deduplicatedItems.map((item) => item.menuItemId);
 
-        // Fetch menu items from DB
+        // Fetch menu items
         const menuItems = await transactionalEntityManager.find(MenuItem, {
           where: { id: In(menuItemIds) },
         });
@@ -99,35 +137,37 @@ export class OrdersService {
           }
         }
 
-        // Map menuItems by id for quick access
+        // Map menuItems
         const menuItemsMap = new Map(menuItems.map((mi) => [mi.id, mi]));
 
-        // Create orderItems with quantity and price
-        const orderItems = deduplicatedItems.map(({ menuItemId, quantity }) => {
-          const menuItem = menuItemsMap.get(menuItemId)!;
-          return transactionalEntityManager.create(OrderItem, {
-            menuItem,
-            menuItemId,
-            quantity,
-            price: menuItem.price,
-          });
-        });
+        // Prepare orderItems data (without creating entities yet)
+        const orderItemsData = deduplicatedItems.map(
+          ({ menuItemId, quantity }) => {
+            const menuItem = menuItemsMap.get(menuItemId)!;
+            return {
+              menuItemId,
+              quantity,
+              price: menuItem.price,
+              menuItem, // Keep reference for later use
+            };
+          },
+        );
 
-        // Calculate total price from orderItems (including delivery fee)
+        // Calculate total price
         const calculatedTotal =
-          orderItems.reduce(
+          orderItemsData.reduce(
             (sum, item) => sum + Number(item.price) * item.quantity,
             0,
-          ) + 1500; // Delivery fee
+          ) + 1500;
 
-        // Validate total price matches
+        // Validate total price
         if (Math.abs(calculatedTotal - totalPrice) > 0.01) {
           throw new BadRequestException(
             `Total price mismatch. Expected: ${calculatedTotal.toFixed(2)}`,
           );
         }
 
-        // Deduct inventory quantities
+        // Deduct inventory
         const inventoryDeductions = new Map<string, number>();
         for (const { menuItemId, quantity } of deduplicatedItems) {
           const recipes = await transactionalEntityManager.find(Recipe, {
@@ -150,7 +190,6 @@ export class OrdersService {
           }
         }
 
-        // Apply inventory deductions
         for (const [inventoryId, deduction] of inventoryDeductions) {
           const inventory = await transactionalEntityManager.findOne(
             Inventory,
@@ -180,25 +219,60 @@ export class OrdersService {
           await transactionalEntityManager.save(inventory);
         }
 
-        // Create order entity
+        // Create order WITHOUT orderItems relationship
         const order = transactionalEntityManager.create(Order, {
           customer,
-          orderItems,
+          // orderItems, // ❌ Remove this line - don't include orderItems here
           totalPrice: calculatedTotal,
           deliveryAddress,
+          id: requestId, // Use requestId as order ID if provided
         });
 
         const savedOrder = await transactionalEntityManager.save(order);
 
-        // Assign orderId to orderItems
-        for (const orderItem of orderItems) {
-          orderItem.order = savedOrder;
+        // Check for existing orderItems (this should now be empty)
+        const existingOrderItems = await transactionalEntityManager.find(
+          OrderItem,
+          {
+            where: { order: { id: savedOrder.id } },
+          },
+        );
+        if (existingOrderItems.length > 0) {
+          throw new ConflictException(
+            'Order items already exist for this order',
+          );
         }
-        await transactionalEntityManager.save(orderItems);
+
+        // Now create the OrderItem entities separately
+        const orderItemEntities = orderItemsData.map((itemData) =>
+          transactionalEntityManager.create(OrderItem, {
+            menuItemId: itemData.menuItemId,
+            quantity: itemData.quantity,
+            price: itemData.price,
+            menuItem: itemData.menuItem,
+            order: savedOrder,
+            orderId: savedOrder.id,
+          }),
+        );
+
+        // Insert orderItems
+        try {
+          const savedOrderItems = await transactionalEntityManager.save(
+            OrderItem,
+            orderItemEntities,
+          );
+        } catch (error) {
+          if (error.code === '23505') {
+            // PostgreSQL unique constraint violation
+            throw new ConflictException(
+              'Duplicate order item detected for this order',
+            );
+          }
+          throw error;
+        }
 
         let transaction: Transaction;
         try {
-          // Create transaction
           transaction = await this.transactionService.create(
             {
               orderId: savedOrder.id,
@@ -215,7 +289,6 @@ export class OrdersService {
 
         let payment: any;
         try {
-          // Initialize payment with Paystack
           payment = await this.transactionService.initializePayment(
             transaction.amount,
             savedOrder.customer.email,
@@ -228,7 +301,6 @@ export class OrdersService {
           );
         }
 
-        // Update menu items availability
         await this.updateMenuItemsAvailability(
           menuItemsMap,
           transactionalEntityManager,

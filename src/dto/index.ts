@@ -9,3 +9,4 @@ export * from './category';
 export * from './recipe';
 export * from './enum';
 export * from './analytics';
+export * from './reservations';

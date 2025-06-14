@@ -11,6 +11,7 @@ import {
   ReservationResponseDto,
   PaginatedReservationsDto,
   FindAllReservationsQueryDto,
+  UpdateReservationDto,
 } from 'src/dto';
 import {
   parse,
@@ -119,9 +120,13 @@ export class ReservationsService {
   }
 
   async findAll(
-    query: FindAllReservationsQueryDto,
+    query: FindAllReservationsQueryDto & {
+      email?: string;
+      search?: string;
+      status?: string;
+    },
   ): Promise<PaginatedReservationsDto> {
-    const { page, limit, startDate, endDate, email } = query;
+    const { page, limit, startDate, endDate, email, search, status } = query;
 
     // Validate page and limit
     if (page < 1 || limit < 1) {
@@ -149,7 +154,22 @@ export class ReservationsService {
 
     const queryBuilder = this.reservationRepository
       .createQueryBuilder('reservation')
-      .orderBy('reservation.createdAt', 'DESC'); // Sort by most recent
+      .orderBy('reservation.createdAt', 'DESC');
+
+    // Apply search filter
+    if (search) {
+      queryBuilder.andWhere(
+        '(LOWER(reservation.name) LIKE :search OR LOWER(reservation.email) LIKE :search)',
+        {
+          search: `%${search.toLowerCase()}%`,
+        },
+      );
+    }
+
+    // Apply status filter
+    if (status && status !== 'all') {
+      queryBuilder.andWhere('reservation.status = :status', { status });
+    }
 
     // Apply date range filter
     if (startDate && endDate) {
@@ -226,6 +246,36 @@ export class ReservationsService {
       throw new BadRequestException('Reservation already cancelled');
     }
     reservation.status = 'cancelled';
+    const updated = await this.reservationRepository.save(reservation);
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      phoneNumber: updated.phoneNumber,
+      date: updated.date,
+      time: updated.time,
+      guests: updated.guests,
+      notes: updated.notes,
+      status: updated.status,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  async update(
+    id: string,
+    input: UpdateReservationDto,
+  ): Promise<ReservationResponseDto> {
+    const reservation = await this.reservationRepository.findOne({
+      where: { id },
+    });
+    if (!reservation) {
+      throw new BadRequestException('Reservation not found');
+    }
+    if (reservation.status === input.status) {
+      throw new BadRequestException(`Reservation is already ${input.status}`);
+    }
+    reservation.status = input.status;
     const updated = await this.reservationRepository.save(reservation);
     return {
       id: updated.id,

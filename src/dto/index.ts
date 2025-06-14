@@ -10,3 +10,4 @@ export * from './recipe';
 export * from './enum';
 export * from './analytics';
 export * from './reservations';
+export * from './reports';

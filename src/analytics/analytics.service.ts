@@ -9,7 +9,11 @@ import {
   TopSellingItemDto,
   RevenueGraphPointDto,
   AnalyticsFiltersDto,
+  InventoryMetricsFiltersDto,
+  InventoryMetricsDto,
 } from 'src/dto';
+import { Inventory } from 'src/inventory/entities/inventory.entity';
+import { Recipe } from 'src/recipe/entities/recipe.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -20,6 +24,8 @@ export class AnalyticsService {
     private customerRepository: Repository<Customer>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
+    @InjectRepository(Inventory)
+    private inventoryRepository: Repository<Inventory>,
   ) {}
 
   async getAnalytics(
@@ -213,5 +219,85 @@ export class AnalyticsService {
         ? filters.menuItemIds
         : undefined;
     return { startDate, endDate, menuItemIds };
+  }
+
+  async getInventoryMetrics(
+    filters: InventoryMetricsFiltersDto = {},
+  ): Promise<InventoryMetricsDto> {
+    const { startDate, endDate } = this.normalizeInventoryFilters(filters);
+
+    // Total Inventory Value (as of endDate)
+    const inventoryValueQuery = this.inventoryRepository
+      .createQueryBuilder('inventory')
+      .select('SUM(inventory.quantity * inventory.unitPrice)', 'totalValue')
+      .where('inventory.updatedAt <= :endDate', { endDate })
+      .andWhere('inventory.deletedAt IS NULL');
+
+    const inventoryValueResult = await inventoryValueQuery.getRawOne();
+    const total_inventory_value = parseFloat(
+      inventoryValueResult?.totalValue || 0,
+    );
+
+    // Total Variance Cost (price differences for items sold in date range)
+    const varianceCostQuery = this.orderItemRepository
+      .createQueryBuilder('order_item')
+      .innerJoin('order_item.order', 'order')
+      .innerJoin('order_item.menuItem', 'menu_item')
+      .innerJoin(Recipe, 'recipe', 'recipe.menuItemId = order_item.menuItemId')
+      .innerJoin('recipe.inventory', 'inventory')
+      .select(
+        'SUM(order_item.quantity * recipe.quantity * (order_item.price - COALESCE(inventory.unitPrice, 0)))',
+        'totalVariance',
+      )
+      .where('order.status = :status', { status: 'completed' })
+      .andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .andWhere('inventory.deletedAt IS NULL');
+
+    const varianceCostResult = await varianceCostQuery.getRawOne();
+    const total_variance_cost = parseFloat(
+      varianceCostResult?.totalVariance || 0,
+    );
+
+    // Profit/Loss Value (sales revenue - COGS)
+    const profitLossQuery = this.orderItemRepository
+      .createQueryBuilder('order_item')
+      .innerJoin('order_item.order', 'order')
+      .innerJoin('order_item.menuItem', 'menu_item')
+      .innerJoin(Recipe, 'recipe', 'recipe.menuItemId = order_item.menuItemId')
+      .innerJoin('recipe.inventory', 'inventory')
+      .select(
+        'SUM(order_item.quantity * order_item.price) - SUM(order_item.quantity * recipe.quantity * COALESCE(inventory.unitPrice, 0))',
+        'profitLoss',
+      )
+      .where('order.status = :status', { status: 'completed' })
+      .andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .andWhere('inventory.deletedAt IS NULL');
+
+    const profitLossResult = await profitLossQuery.getRawOne();
+    const profit_loss_value = parseFloat(profitLossResult?.profitLoss || 0);
+
+    return {
+      total_inventory_value: parseFloat(total_inventory_value.toFixed(2)),
+      total_variance_cost: parseFloat(total_variance_cost.toFixed(2)),
+      profit_loss_value: parseFloat(profit_loss_value.toFixed(2)),
+    };
+  }
+
+  private normalizeInventoryFilters(filters: InventoryMetricsFiltersDto): {
+    startDate: Date;
+    endDate: Date;
+  } {
+    const endDate = filters.endDate ? new Date(filters.endDate) : new Date();
+    const startDate = filters.startDate
+      ? new Date(filters.startDate)
+      : new Date();
+    startDate.setDate(endDate.getDate() - 30); // Default: last 30 days
+    return { startDate, endDate };
   }
 }

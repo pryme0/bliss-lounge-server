@@ -17,6 +17,7 @@ import {
   ApiConflictResponse,
   ApiParam,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ReservationsService } from './reservations.service';
 import {
@@ -24,6 +25,7 @@ import {
   ReservationResponseDto,
   PaginatedReservationsDto,
   FindAllReservationsQueryDto,
+  UpdateReservationDto,
 } from 'src/dto';
 
 @ApiTags('reservations')
@@ -124,5 +126,24 @@ export class ReservationsController {
   @ApiParam({ name: 'id', description: 'Reservation ID', type: String })
   async cancel(@Param('id') id: string): Promise<ReservationResponseDto> {
     return this.reservationsService.cancel(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update reservation status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reservation updated',
+    type: ReservationResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Reservation not found or invalid status',
+  })
+  @ApiParam({ name: 'id', description: 'Reservation ID', type: String })
+  @ApiBody({ type: UpdateReservationDto })
+  async update(
+    @Param('id') id: string,
+    @Body() updateReservationDto: UpdateReservationDto,
+  ): Promise<ReservationResponseDto> {
+    return this.reservationsService.update(id, updateReservationDto);
   }
 }

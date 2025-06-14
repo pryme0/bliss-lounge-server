@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsEmail,
@@ -7,6 +8,7 @@ import {
   IsOptional,
   Length,
   Matches,
+  IsIn,
 } from 'class-validator';
 
 export class CreateReservationDto {
@@ -44,6 +46,18 @@ export class CreateReservationDto {
     message: 'Phone number must be 10–15 digits, optionally starting with +',
   })
   phoneNumber: string;
+}
+
+export class UpdateReservationDto {
+  @ApiProperty({
+    description: 'Reservation status',
+    enum: ['pending', 'confirmed', 'cancelled'],
+    example: 'confirmed',
+  })
+  @IsIn(['pending', 'confirmed', 'cancelled'], {
+    message: 'Status must be one of: pending, confirmed, cancelled',
+  })
+  status: 'pending' | 'confirmed' | 'cancelled';
 }
 
 export class ReservationResponseDto {

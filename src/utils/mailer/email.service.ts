@@ -12,6 +12,7 @@ export class EmailService {
         from: 'obochi2@gmail.com',
         subject: payload.subject,
         text: payload?.text,
+        attachments: payload.attachments,
       })
       .then((resp) => {
         console.log(resp.data);

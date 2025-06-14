@@ -86,3 +86,14 @@ export class AnalyticsFiltersDto {
   @Type(() => String)
   menuItemIds?: string[];
 }
+
+export class InventoryMetricsDto {
+  total_inventory_value: number;
+  total_variance_cost: number;
+  profit_loss_value: number;
+}
+
+export class InventoryMetricsFiltersDto {
+  startDate?: string;
+  endDate?: string;
+}

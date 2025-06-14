@@ -17,6 +17,7 @@ import { CategoryModule } from './category/category.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { ReportModule } from './report/report.module';
 @Module({
   imports: [
     JwtModule.register({
@@ -37,6 +38,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ReservationsModule,
     RecipeModule,
     AnalyticsModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

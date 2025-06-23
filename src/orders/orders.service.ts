@@ -49,6 +49,7 @@ export class OrdersService {
   ) {}
 
   async create(
+    origin: string,
     input: CreateOrderDto & { requestId?: string },
   ): Promise<CreateOrderResponse> {
     return this.orderRepository.manager.transaction(
@@ -67,6 +68,7 @@ export class OrdersService {
           );
           if (existingOrder) {
             return await this.transactionService.initializePayment(
+              origin,
               existingOrder.totalPrice,
               existingOrder.customer.email,
               existingOrder.id,
@@ -257,10 +259,7 @@ export class OrdersService {
 
         // Insert orderItems
         try {
-          const savedOrderItems = await transactionalEntityManager.save(
-            OrderItem,
-            orderItemEntities,
-          );
+          await transactionalEntityManager.save(OrderItem, orderItemEntities);
         } catch (error) {
           if (error.code === '23505') {
             // PostgreSQL unique constraint violation
@@ -290,6 +289,7 @@ export class OrdersService {
         let payment: any;
         try {
           payment = await this.transactionService.initializePayment(
+            origin,
             transaction.amount,
             savedOrder.customer.email,
             savedOrder.id,

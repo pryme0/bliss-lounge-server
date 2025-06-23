@@ -86,6 +86,7 @@ export class TransactionService {
   }
 
   async initializePayment(
+    origin: string,
     amount: number,
     email: string,
     orderId: string,
@@ -95,6 +96,7 @@ export class TransactionService {
 
     try {
       const response = await this.paystackService.initializeTransaction(
+        `${origin}/checkout/success`,
         amount,
         email,
         reference,

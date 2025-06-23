@@ -56,10 +56,6 @@ export class AnalyticsController {
   async getInventoryMetrics(
     @Query(ValidationPipe) filters: InventoryMetricsFiltersDto,
   ): Promise<InventoryMetricsDto> {
-    console.log('getInventoryMetrics endpoint:', {
-      filters,
-      timestamp: new Date().toISOString(),
-    });
     return this.analyticsService.getInventoryMetrics(filters);
   }
 }

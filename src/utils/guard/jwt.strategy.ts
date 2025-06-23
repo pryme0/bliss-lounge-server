@@ -18,15 +18,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET'),
     });
-
-    console.log(
-      'JWT Strategy initialized with secret:',
-      configService.get<string>('JWT_SECRET'),
-    );
   }
 
   async validate(payload: any): Promise<Admin> {
-    console.log({ payload });
     const admin = await this.adminRepository.findOne({
       where: { id: payload.id },
     });

@@ -12,6 +12,7 @@ export class PaystackService {
   }
 
   async initializeTransaction(
+    callback: string,
     amount: number,
     email: string,
     reference: string,
@@ -22,7 +23,7 @@ export class PaystackService {
         email,
         reference,
         currency: 'NGN',
-        callback_url: process.env.CLIENT_CHECKOUT_SUCCESS_URL,
+        callback_url: callback,
       });
       return response;
     } catch (error) {

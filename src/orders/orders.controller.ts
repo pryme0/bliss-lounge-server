@@ -7,6 +7,7 @@ import {
   Patch,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -19,6 +20,8 @@ import {
   UpdateOrderDto,
 } from 'src/dto';
 
+import { Request } from 'express';
+
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
@@ -29,8 +32,10 @@ export class OrdersController {
   @ApiResponse({ status: 201, description: 'Order created', type: Order })
   async create(
     @Body() createOrderDto: CreateOrderDto,
+    @Req() request: Request,
   ): Promise<CreateOrderResponse> {
-    return this.ordersService.create(createOrderDto);
+    const origin = request.headers.origin;
+    return this.ordersService.create(origin, createOrderDto);
   }
 
   @Get()

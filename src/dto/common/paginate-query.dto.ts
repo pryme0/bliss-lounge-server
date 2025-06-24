@@ -33,4 +33,10 @@ export class PaginationQueryDto {
   @IsUUID()
   @IsOptional()
   customerId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Indicator for if the menuitem is featured',
+    example: 'true',
+  })
+  featured?: string;
 }

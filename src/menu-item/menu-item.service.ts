@@ -174,6 +174,7 @@ export class MenuItemService {
     limit: number = 10,
     search?: string,
     categoryId?: string,
+    featured?: string,
   ): Promise<PaginatedResponse<MenuItem>> {
     const skip = (page - 1) * limit;
     const queryBuilder = this.menuItemRepository
@@ -197,9 +198,14 @@ export class MenuItemService {
       });
     }
 
+    if (featured === 'true') {
+      queryBuilder.andWhere('menuItem.featured = :featured', {
+        featured: true,
+      });
+    }
+
     const [data, total] = await queryBuilder.getManyAndCount();
 
-    // Update availability and cost for each menu item
     for (const item of data) {
       item.cost = await this.calculateMenuItemCost(item.id);
       item.isAvailable = await this.recipeService.checkMenuItemAvailability(

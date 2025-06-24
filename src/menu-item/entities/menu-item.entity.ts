@@ -25,7 +25,7 @@ export class MenuItem {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.0 }) // Cost of goods sold based on inventory
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.0 })
   cost: number;
 
   @Column({ nullable: true })
@@ -36,6 +36,9 @@ export class MenuItem {
 
   @Column()
   categoryId: string;
+
+  @Column({ default: false })
+  featured: boolean;
 
   @ManyToOne(() => Category, (category) => category.menuItems, {
     onDelete: 'CASCADE',

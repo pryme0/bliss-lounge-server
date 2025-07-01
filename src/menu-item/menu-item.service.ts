@@ -297,12 +297,25 @@ export class MenuItemService {
       menuItem.imageUrl = publicUrlData?.publicUrl;
     }
 
+    let featured: boolean;
+
+    if (input.featured) {
+      if (input.featured === 'true') {
+        featured = true;
+      }
+
+      if (input.featured === 'false') {
+        featured = false;
+      }
+    }
+
     // Assign fields
     Object.assign(menuItem, {
       name: input.name ?? menuItem.name,
       description: input.description ?? menuItem.description,
       price: input.price ?? menuItem.price,
       cost: input.cost ?? menuItem.cost,
+      featured: featured ?? menuItem.featured,
     });
 
     // Update cost and availability

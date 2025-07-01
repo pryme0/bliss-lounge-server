@@ -8,6 +8,7 @@ import {
   Min,
   IsEnum,
   ValidateNested,
+  IsBoolean,
 } from 'class-validator';
 import { InventoryUnitEnum } from '../enum';
 
@@ -87,6 +88,14 @@ export class CreateMenuItemDto {
   @IsOptional()
   @ValidateNested({ each: true })
   recipes?: CreateMenuItemRecipeDto[];
+
+  @ApiPropertyOptional({
+    example: 'true',
+    description: 'Flag to determine if the menu item is featured',
+  })
+  @IsOptional()
+  @IsString()
+  featured?: string;
 }
 
 export class UpdateMenuItemDto extends PartialType(CreateMenuItemDto) {}

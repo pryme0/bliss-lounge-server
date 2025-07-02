@@ -56,6 +56,7 @@ export class MenuItemController {
       query.search,
       query.categoryId,
       query.featured,
+      query.isAvailable,
     );
   }
 

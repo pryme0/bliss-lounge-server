@@ -39,4 +39,10 @@ export class PaginationQueryDto {
     example: 'true',
   })
   featured?: string;
+
+  @ApiPropertyOptional({
+    description: 'Indicator for if the menuitem is in stock',
+    example: 'true',
+  })
+  isAvailable?: string;
 }

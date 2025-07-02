@@ -175,8 +175,10 @@ export class MenuItemService {
     search?: string,
     categoryId?: string,
     featured?: string,
+    isAvailable?: string, // Passed as query string (e.g., "true" or "false")
   ): Promise<PaginatedResponse<MenuItem>> {
     const skip = (page - 1) * limit;
+
     const queryBuilder = this.menuItemRepository
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.category', 'category')
@@ -201,6 +203,14 @@ export class MenuItemService {
     if (featured === 'true') {
       queryBuilder.andWhere('menuItem.featured = :featured', {
         featured: true,
+      });
+    }
+
+    // ✅ Robust handling of isAvailable flag
+    if (isAvailable === 'true' || isAvailable === 'false') {
+      const isAvailableBool = isAvailable === 'true';
+      queryBuilder.andWhere('menuItem.isAvailable = :isAvailable', {
+        isAvailable: isAvailableBool,
       });
     }
 

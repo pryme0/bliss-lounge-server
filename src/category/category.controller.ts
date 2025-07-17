@@ -24,6 +24,7 @@ import { Category } from './entities/category.entity';
 import {
   CreateCategoryDto,
   CursorPaginatedCategoriesDto,
+  CursorPaginatedSubCategoriesDto,
   CursorPaginationQueryDto,
   UpdateCategoryDto,
 } from 'src/dto';
@@ -85,6 +86,38 @@ export class CategoriesController {
     @Query() paginationQuery: CursorPaginationQueryDto,
   ): Promise<CursorPaginatedCategoriesDto> {
     return this.categoriesService.findAll(paginationQuery);
+  }
+
+  @Get('/subcategories')
+  @ApiOperation({ summary: 'Get all categories with cursor pagination' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Cursor for pagination (category ID)',
+    example: 28540,
+  })
+  @ApiQuery({
+    name: 'direction',
+    required: false,
+    description: 'Pagination direction',
+    enum: ['next', 'prev'],
+    example: 'next',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categories retrieved successfully',
+    type: CursorPaginatedCategoriesDto,
+  })
+  async findAllSubcategories(
+    @Query() paginationQuery: CursorPaginationQueryDto,
+  ): Promise<CursorPaginatedSubCategoriesDto> {
+    return this.categoriesService.findAllSubcategories(paginationQuery);
   }
 
   @Get(':id')

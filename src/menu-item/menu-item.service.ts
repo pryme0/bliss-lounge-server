@@ -19,6 +19,7 @@ import { SUPABASE_CLIENT } from 'src/supabase';
 import { Category } from 'src/category/entities/category.entity';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import { RecipeService } from 'src/recipe/recipe.service';
+import { SubCategory } from 'src/category/entities/subCategory.entity';
 
 @Injectable()
 export class MenuItemService {
@@ -32,6 +33,8 @@ export class MenuItemService {
     @Inject(SUPABASE_CLIENT)
     private readonly supabaseClient: SupabaseClient,
     private readonly recipeService: RecipeService,
+    @InjectRepository(SubCategory)
+    private readonly subCategoryRepository: Repository<SubCategory>,
   ) {}
 
   async create(
@@ -61,6 +64,24 @@ export class MenuItemService {
           if (!category) {
             throw new BadRequestException(
               `Category with ID "${input.categoryId}" not found.`,
+            );
+          }
+
+          // Validate subcategory
+          if (!input.subCategoryId) {
+            throw new BadRequestException(`SubCategory ID is required.`);
+          }
+
+          const subCategory = await transactionalEntityManager.findOne(
+            SubCategory,
+            {
+              where: { id: input.subCategoryId },
+            },
+          );
+
+          if (!subCategory) {
+            throw new BadRequestException(
+              `SubCategory with ID "${input.subCategoryId}" not found.`,
             );
           }
 
@@ -94,20 +115,11 @@ export class MenuItemService {
             imageUrl,
             isAvailable: false,
             category,
+            subCategory,
+            featured: input.featured === 'true' ? true : false,
           });
 
           const savedMenuItem = await transactionalEntityManager.save(menuItem);
-
-          // Debug: Verify savedMenuItem
-          const verifyMenuItem = await transactionalEntityManager.findOne(
-            MenuItem,
-            { where: { id: savedMenuItem.id } },
-          );
-          if (!verifyMenuItem) {
-            throw new InternalServerErrorException(
-              `Failed to persist MenuItem with ID ${savedMenuItem.id}`,
-            );
-          }
 
           // Create recipes if provided
           let calculatedCost = input.cost ?? 0;
@@ -122,7 +134,6 @@ export class MenuItemService {
               throw new BadRequestException('Invalid recipes format');
             }
 
-            // Validate no duplicate inventory IDs
             const inventoryIds = parsedRecipes.map((r) => r.inventoryId);
             if (new Set(inventoryIds).size !== inventoryIds.length) {
               throw new BadRequestException(
@@ -146,20 +157,19 @@ export class MenuItemService {
               );
             }
 
-            // Calculate cost based on recipes
             calculatedCost = await this.calculateMenuItemCost(
               savedMenuItem.id,
               transactionalEntityManager,
             );
           }
 
-          // Update cost and availability
           savedMenuItem.cost = calculatedCost;
           savedMenuItem.isAvailable =
             await this.recipeService.checkMenuItemAvailability(
               savedMenuItem.id,
               { transactionalEntityManager },
             );
+
           return await transactionalEntityManager.save(savedMenuItem);
         } catch (error) {
           console.error('Transaction error:', error);
@@ -174,14 +184,16 @@ export class MenuItemService {
     limit: number = 10,
     search?: string,
     categoryId?: string,
+    subCategoryId?: string,
     featured?: string,
-    isAvailable?: string, // Passed as query string (e.g., "true" or "false")
+    isAvailable?: string,
   ): Promise<PaginatedResponse<MenuItem>> {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.menuItemRepository
       .createQueryBuilder('menuItem')
-      .leftJoinAndSelect('menuItem.category', 'category')
+      .leftJoinAndSelect('menuItem.subCategory', 'subCategory')
+      .leftJoinAndSelect('subCategory.category', 'category')
       .leftJoinAndSelect('menuItem.recipes', 'recipes')
       .leftJoinAndSelect('recipes.inventory', 'inventory')
       .orderBy('menuItem.createdAt', 'DESC')
@@ -195,18 +207,21 @@ export class MenuItemService {
     }
 
     if (categoryId) {
-      queryBuilder.andWhere('menuItem.categoryId = :categoryId', {
+      queryBuilder.andWhere('subCategory.categoryId = :categoryId', {
         categoryId,
       });
     }
 
-    if (featured === 'true') {
-      queryBuilder.andWhere('menuItem.featured = :featured', {
-        featured: true,
+    if (subCategoryId) {
+      queryBuilder.andWhere('menuItem.subCategoryId = :subCategoryId', {
+        subCategoryId,
       });
     }
 
-    // ✅ Robust handling of isAvailable flag
+    if (featured === 'true') {
+      queryBuilder.andWhere('menuItem.featured = true');
+    }
+
     if (isAvailable === 'true' || isAvailable === 'false') {
       const isAvailableBool = isAvailable === 'true';
       queryBuilder.andWhere('menuItem.isAvailable = :isAvailable', {
@@ -285,6 +300,20 @@ export class MenuItemService {
         );
       }
       menuItem.category = category;
+    }
+
+    if (input.subCategoryId) {
+      const subCategory = await this.subCategoryRepository.findOne({
+        where: { id: input.subCategoryId },
+      });
+
+      if (!subCategory) {
+        throw new BadRequestException(
+          `SubCategory with ID "${input.subCategoryId}" not found.`,
+        );
+      }
+
+      menuItem.subCategory = subCategory;
     }
 
     // Handle image update

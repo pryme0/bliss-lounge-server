@@ -55,6 +55,7 @@ export class MenuItemController {
       parseInt(query.limit) || 10,
       query.search,
       query.categoryId,
+      query.subCategoryId,
       query.featured,
       query.isAvailable,
     );

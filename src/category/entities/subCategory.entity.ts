@@ -3,15 +3,17 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  ManyToOne,
+  JoinColumn,
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
-  JoinColumn,
-  ManyToOne,
 } from 'typeorm';
+import { Category } from './category.entity';
 
+// SubCategory.ts
 @Entity()
-export class Category {
+export class SubCategory {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -19,16 +21,15 @@ export class Category {
   name: string;
 
   @ManyToOne(() => Category, (category) => category.subCategories, {
-    nullable: true,
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'parentId' })
-  parent?: Category;
+  @JoinColumn({ name: 'categoryId' })
+  category: Category;
 
-  @OneToMany(() => Category, (category) => category.parent)
-  subCategories: Category[];
+  @Column({ nullable: true })
+  categoryId: string;
 
-  @OneToMany(() => MenuItem, (menuItem) => menuItem.category)
+  @OneToMany(() => MenuItem, (menuItem) => menuItem.subCategory)
   menuItems: MenuItem[];
 
   @CreateDateColumn()

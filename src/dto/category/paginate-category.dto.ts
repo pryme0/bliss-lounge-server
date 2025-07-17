@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Expose, Type } from 'class-transformer';
 import { IsOptional, IsPositive, Min, Max, IsNumber } from 'class-validator';
 import { Category } from 'src/category/entities/category.entity';
+import { SubCategory } from 'src/category/entities/subCategory.entity';
+import { MenuItem } from 'src/menu-item/entities/menu-item.entity';
 
 export class CursorPaginatedCategoriesDto {
   @ApiProperty({
@@ -60,4 +63,58 @@ export class CursorPaginationQueryDto {
   })
   @IsOptional()
   direction?: 'next' | 'prev' = 'next';
+}
+
+
+
+export class SubCategoryResponseDto {
+  @Expose()
+  id: string;
+
+  @Expose()
+  name: string;
+
+  @Expose()
+  categoryId: string;
+
+  @Expose()
+  @Type(() => Category)
+  category: Category;
+
+  @Expose()
+  @Type(() => MenuItem)
+  menuItems: MenuItem[];
+
+  @Expose()
+  createdAt: Date;
+
+  @Expose()
+  updatedAt: Date;
+}
+
+
+export class CursorPaginatedSubCategoriesDto {
+  @ApiProperty({
+    description: 'Array of sub-categories',
+    type: [SubCategory],
+  })
+  data: SubCategory[];
+
+  @ApiProperty({
+    description: 'Pagination metadata',
+    example: {
+      totalCount: 34,
+      hasNextPage: true,
+      hasPreviousPage: false,
+      nextCursor: '2024-07-17T12:00:00.000Z',
+      previousCursor: null,
+    },
+  })
+  meta: {
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    nextCursor: string | null;
+    previousCursor: string | null;
+  };
 }

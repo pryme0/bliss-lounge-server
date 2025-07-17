@@ -27,6 +27,13 @@ export class PaginationQueryDto {
   categoryId?: string;
 
   @ApiPropertyOptional({
+    description: 'Category id of the menu items',
+    example: 'John',
+  })
+  @IsOptional()
+  subCategoryId: string;
+
+  @ApiPropertyOptional({
     description: 'Customer id',
     example: '99377-393swj3899-838383',
   })

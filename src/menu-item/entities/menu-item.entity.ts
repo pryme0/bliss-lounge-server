@@ -1,4 +1,5 @@
 import { Category } from 'src/category/entities/category.entity';
+import { SubCategory } from 'src/category/entities/subCategory.entity';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import {
   Entity,
@@ -34,8 +35,11 @@ export class MenuItem {
   @Column({ default: true })
   isAvailable: boolean;
 
-  @Column()
+  @Column({ nullable: true })
   categoryId: string;
+
+  @Column({ nullable: true })
+  subCategoryId: string;
 
   @Column({ default: false })
   featured: boolean;
@@ -45,6 +49,12 @@ export class MenuItem {
   })
   @JoinColumn({ name: 'categoryId' })
   category: Category;
+
+  @ManyToOne(() => SubCategory, (subCategory) => subCategory.menuItems, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'subCategoryId' })
+  subCategory: SubCategory;
 
   @OneToMany(() => Recipe, (recipe) => recipe.menuItem)
   recipes: Recipe[];

@@ -9,11 +9,19 @@ import { Admin } from 'src/admin/entities/admin.entity';
 import { Category } from 'src/category/entities/category.entity';
 import { RecipeModule } from 'src/recipe/recipe.module';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
+import { SubCategory } from 'src/category/entities/subCategory.entity';
 
 @Module({
   imports: [
     RecipeModule,
-    TypeOrmModule.forFeature([MenuItem, Inventory, Admin, Category, Recipe]),
+    TypeOrmModule.forFeature([
+      MenuItem,
+      Inventory,
+      Admin,
+      Category,
+      Recipe,
+      SubCategory,
+    ]),
   ],
   controllers: [MenuItemController],
   providers: [SupabaseProvider, MenuItemService],

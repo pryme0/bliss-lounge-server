@@ -10,15 +10,19 @@ import { Category } from './entities/category.entity';
 import {
   CreateCategoryDto,
   CursorPaginatedCategoriesDto,
+  CursorPaginatedSubCategoriesDto,
   CursorPaginationQueryDto,
   UpdateCategoryDto,
 } from 'src/dto';
+import { SubCategory } from './entities/subCategory.entity';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(SubCategory)
+    private readonly subCategoryRepository: Repository<SubCategory>,
   ) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
@@ -88,6 +92,61 @@ export class CategoriesService {
 
     return {
       data: categories,
+      meta: {
+        totalCount,
+        hasNextPage,
+        hasPreviousPage,
+        nextCursor,
+        previousCursor,
+      },
+    };
+  }
+
+  async findAllSubcategories(
+    query: CursorPaginationQueryDto,
+  ): Promise<CursorPaginatedSubCategoriesDto> {
+    const { limit = 10, cursor, direction = 'next' } = query;
+
+    const queryBuilder = this.subCategoryRepository
+      .createQueryBuilder('subCategory')
+      .leftJoinAndSelect('subCategory.category', 'category');
+
+    // Apply cursor-based filtering
+    if (cursor) {
+      if (direction === 'next') {
+        queryBuilder.where('subCategory.id > :cursor', { cursor });
+        queryBuilder.orderBy('subCategory.id', 'ASC');
+      } else {
+        queryBuilder.where('subCategory.id < :cursor', { cursor });
+        queryBuilder.orderBy('subCategory.id', 'DESC');
+      }
+    } else {
+      queryBuilder.orderBy('subCategory.id', 'ASC');
+    }
+
+    queryBuilder.limit(limit + 1); // Fetch one extra item to check if there's a next page
+
+    let items = await queryBuilder.getMany();
+
+    const hasNextPage = items.length > limit;
+    if (hasNextPage) {
+      items = items.slice(0, limit);
+    }
+
+    if (cursor && direction === 'prev') {
+      items.reverse();
+    }
+
+    const nextCursor = hasNextPage
+      ? (items[items.length - 1]?.id ?? null)
+      : null;
+    const hasPreviousPage = !!cursor;
+    const previousCursor = hasPreviousPage ? (items[0]?.id ?? null) : null;
+
+    const totalCount = await this.subCategoryRepository.count();
+
+    return {
+      data: items,
       meta: {
         totalCount,
         hasNextPage,

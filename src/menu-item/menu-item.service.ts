@@ -193,7 +193,7 @@ export class MenuItemService {
     const queryBuilder = this.menuItemRepository
       .createQueryBuilder('menuItem')
       .leftJoinAndSelect('menuItem.subCategory', 'subCategory')
-      .leftJoinAndSelect('subCategory.category', 'category')
+      .leftJoinAndSelect('menuItem.category', 'category')
       .leftJoinAndSelect('menuItem.recipes', 'recipes')
       .leftJoinAndSelect('recipes.inventory', 'inventory')
       .orderBy('menuItem.createdAt', 'DESC')
@@ -206,11 +206,9 @@ export class MenuItemService {
       });
     }
 
-    if (categoryId) {
-      queryBuilder.andWhere('subCategory.categoryId = :categoryId', {
-        categoryId,
-      });
-    }
+   if (categoryId) {
+     queryBuilder.andWhere('menuItem.categoryId = :categoryId', { categoryId });
+   }
 
     if (subCategoryId) {
       queryBuilder.andWhere('menuItem.subCategoryId = :subCategoryId', {

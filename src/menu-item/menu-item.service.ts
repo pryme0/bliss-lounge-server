@@ -206,9 +206,13 @@ export class MenuItemService {
       });
     }
 
-   if (categoryId) {
-     queryBuilder.andWhere('menuItem.categoryId = :categoryId', { categoryId });
-   }
+      if (categoryId) {
+        console.log('Filtering by categoryId:', {
+          categoryId,
+          type: typeof categoryId,
+        });
+        queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+      }
 
     if (subCategoryId) {
       queryBuilder.andWhere('menuItem.subCategoryId = :subCategoryId', {

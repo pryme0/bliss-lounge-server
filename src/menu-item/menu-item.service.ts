@@ -206,16 +206,17 @@ export class MenuItemService {
       });
     }
 
-      if (categoryId) {
-        console.log('Filtering by categoryId:', {
-          categoryId,
-          type: typeof categoryId,
-        });
-        queryBuilder.andWhere('category.id = :categoryId', { categoryId });
-      }
+    // Improved categoryId filtering - use the joined category table
+    if (categoryId) {
+      console.log('Filtering by categoryId:', {
+        categoryId,
+        type: typeof categoryId,
+      });
+      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+    }
 
     if (subCategoryId) {
-      queryBuilder.andWhere('menuItem.subCategoryId = :subCategoryId', {
+      queryBuilder.andWhere('subCategory.id = :subCategoryId', {
         subCategoryId,
       });
     }
@@ -231,8 +232,10 @@ export class MenuItemService {
       });
     }
 
+
     const [data, total] = await queryBuilder.getManyAndCount();
 
+    // Process items after fetching
     for (const item of data) {
       item.cost = await this.calculateMenuItemCost(item.id);
       item.isAvailable = await this.recipeService.checkMenuItemAvailability(

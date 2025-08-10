@@ -200,24 +200,16 @@ export class MenuItemService {
       .skip(skip)
       .take(limit);
 
+    // Apply filters
     if (search) {
       queryBuilder.andWhere('menuItem.name ILIKE :search', {
         search: `%${search}%`,
       });
     }
 
-    // Improved categoryId filtering - use the joined category table
     if (categoryId) {
-      console.log('Filtering by categoryId:', {
-        categoryId,
-        type: typeof categoryId,
-      });
-      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
-    }
-
-    if (subCategoryId) {
-      queryBuilder.andWhere('subCategory.id = :subCategoryId', {
-        subCategoryId,
+      queryBuilder.andWhere('menuItem.subCategoryId = :subCategoryId', {
+        subCategoryId: categoryId,
       });
     }
 
@@ -232,17 +224,25 @@ export class MenuItemService {
       });
     }
 
-
+    // Get entities and total count
     const [data, total] = await queryBuilder.getManyAndCount();
 
-    // Process items after fetching
-    for (const item of data) {
-      item.cost = await this.calculateMenuItemCost(item.id);
-      item.isAvailable = await this.recipeService.checkMenuItemAvailability(
-        item.id,
-      );
-      await this.menuItemRepository.save(item);
-    }
+    // Process all items in parallel - THIS IS THE KEY IMPROVEMENT
+    await Promise.all(
+      data.map(async (item) => {
+        // Run both calculations in parallel for each item
+        const [cost, isAvailableCalculated] = await Promise.all([
+          this.calculateMenuItemCost(item.id),
+          this.recipeService.checkMenuItemAvailability(item.id),
+        ]);
+
+        item.cost = cost;
+        item.isAvailable = isAvailableCalculated;
+      }),
+    );
+
+    // Bulk save all items at once
+    await this.menuItemRepository.save(data);
 
     return {
       data,

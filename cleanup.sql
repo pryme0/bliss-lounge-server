@@ -1,0 +1,21 @@
+-- Drop your application tables only
+DROP TABLE IF EXISTS order_menu_items_menu_item CASCADE;
+DROP TABLE IF EXISTS order_item CASCADE;
+DROP TABLE IF EXISTS "order" CASCADE;
+DROP TABLE IF EXISTS recipe CASCADE;
+DROP TABLE IF EXISTS menu_item CASCADE;
+DROP TABLE IF EXISTS reservation CASCADE;
+DROP TABLE IF EXISTS transaction CASCADE;
+DROP TABLE IF EXISTS inventory CASCADE;
+DROP TABLE IF EXISTS sub_category CASCADE;
+DROP TABLE IF EXISTS category CASCADE;
+DROP TABLE IF EXISTS customer CASCADE;
+DROP TABLE IF EXISTS admin CASCADE;
+DROP TABLE IF EXISTS migrations CASCADE;
+
+-- Drop custom types
+DROP TYPE IF EXISTS inventory_status_enum CASCADE;
+DROP TYPE IF EXISTS inventory_unit_enum CASCADE;
+DROP TYPE IF EXISTS recipe_unit_enum CASCADE;
+DROP TYPE IF EXISTS transaction_paymentmethod_enum CASCADE;
+DROP TYPE IF EXISTS transaction_status_enum CASCADE;

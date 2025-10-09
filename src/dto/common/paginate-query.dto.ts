@@ -52,4 +52,10 @@ export class PaginationQueryDto {
     example: 'true',
   })
   isAvailable?: string;
+
+  @ApiPropertyOptional({
+    description: 'Include unpublished events',
+    example: 'true',
+  })
+  includeUnpublished?: string;
 }

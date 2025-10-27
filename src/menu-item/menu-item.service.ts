@@ -20,6 +20,7 @@ import { Category } from 'src/category/entities/category.entity';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import { RecipeService } from 'src/recipe/recipe.service';
 import { SubCategory } from 'src/category/entities/subCategory.entity';
+import { DiscountsService } from 'src/discounts/discounts.service';
 
 @Injectable()
 export class MenuItemService {
@@ -35,6 +36,7 @@ export class MenuItemService {
     private readonly recipeService: RecipeService,
     @InjectRepository(SubCategory)
     private readonly subCategoryRepository: Repository<SubCategory>,
+    private readonly discountsService: DiscountsService,
   ) {}
 
   async create(
@@ -244,6 +246,13 @@ export class MenuItemService {
     // Bulk save all items at once
     await this.menuItemRepository.save(data);
 
+    // Apply discounts to all items
+    await Promise.all(
+      data.map(async (item) => {
+        await this.applyDiscountToMenuItem(item);
+      }),
+    );
+
     return {
       data,
       total,
@@ -265,6 +274,9 @@ export class MenuItemService {
     item.cost = await this.calculateMenuItemCost(id);
     item.isAvailable = await this.recipeService.checkMenuItemAvailability(id);
     await this.menuItemRepository.save(item);
+
+    // Apply discount
+    await this.applyDiscountToMenuItem(item);
 
     return item;
   }
@@ -404,5 +416,31 @@ export class MenuItemService {
       }
       return total + recipe.quantity * recipe.inventory.unitPrice;
     }, 0);
+  }
+
+  async applyDiscountToMenuItem(menuItem: MenuItem): Promise<void> {
+    try {
+      const discountInfo = await this.discountsService.getBestDiscountForMenuItem(
+        menuItem.id,
+      );
+
+      if (discountInfo.discount) {
+        menuItem.discountedPrice = discountInfo.discountedPrice;
+        menuItem.activeDiscount = {
+          id: discountInfo.discount.id,
+          name: discountInfo.discount.name,
+          type: discountInfo.discount.type,
+          value: discountInfo.discount.value,
+        };
+      } else {
+        menuItem.discountedPrice = Number(menuItem.price);
+        menuItem.activeDiscount = undefined;
+      }
+    } catch (error) {
+      // If there's an error getting discounts, just use the original price
+      console.error('Error applying discount:', error);
+      menuItem.discountedPrice = Number(menuItem.price);
+      menuItem.activeDiscount = undefined;
+    }
   }
 }

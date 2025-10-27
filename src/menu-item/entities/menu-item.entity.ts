@@ -64,4 +64,13 @@ export class MenuItem {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Virtual property to store calculated discount info (not persisted in DB)
+  discountedPrice?: number;
+  activeDiscount?: {
+    id: string;
+    name: string;
+    type: string;
+    value: number;
+  };
 }

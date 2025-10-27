@@ -11,3 +11,5 @@ export * from './enum';
 export * from './analytics';
 export * from './reservations';
 export * from './reports';
+export * from './event';
+export * from './discount';

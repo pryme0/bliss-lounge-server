@@ -10,10 +10,12 @@ import { Category } from 'src/category/entities/category.entity';
 import { RecipeModule } from 'src/recipe/recipe.module';
 import { Recipe } from 'src/recipe/entities/recipe.entity';
 import { SubCategory } from 'src/category/entities/subCategory.entity';
+import { DiscountsModule } from 'src/discounts/discounts.module';
 
 @Module({
   imports: [
     RecipeModule,
+    DiscountsModule,
     TypeOrmModule.forFeature([
       MenuItem,
       Inventory,

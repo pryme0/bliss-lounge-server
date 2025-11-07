@@ -63,8 +63,7 @@ export class AppController {
   }
   catch(error) {
     console.log({ error });
-    // Rollback transaction on error
-    // await queryRunner.rollbackTransaction();
+   
   }
 
   @Get('/without-sub-category')
